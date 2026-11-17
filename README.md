@@ -1,36 +1,16 @@
-# Gerador de Currículos — Microlins Cacoal
+# Atualização Microlins Currículos — login obrigatório e modelo visual com foto
 
-Site estático baseado no `index.html` fornecido. Usa **GitHub** (código), **Render Static Site** (hospedagem) e **Supabase Auth + Database** (login e currículos salvos).
+## Instalação
+1. No repositório `microlinscacoal2022/Microlins-Curriculos`, substitua **somente** os arquivos `index.html` e `app.js` pelos dois desta atualização.
+2. **Não** substitua `config.js`, pois ele já contém as credenciais públicas corretas do seu Supabase.
+3. O Render republica a partir do GitHub. Recarregue o navegador com Ctrl+F5.
+4. Teste com usuário existente: login, criação, foto, salvar, Meus currículos, visualizar, editar, PDF.
 
-## 1. Supabase
-1. Crie um projeto em https://supabase.com/dashboard.
-2. Abra **SQL Editor** e execute o arquivo `supabase.sql` inteiro.
-3. Em **Project Settings > API / API Keys**, copie **Project URL** e a chave **publishable** (ou chave `anon` legada) e cole em `config.js`. **Nunca coloque a chave `service_role` ou secreta no frontend**.
-4. Em **Authentication > Providers > Email**, habilite Email. Para uso público, mantenha a confirmação de e-mail ativada.
+## Compatibilidade
+Usa a mesma tabela `public.curriculos` e os mesmos campos (`nome`, `conteudo`, `usuario_id`). Currículos antigos permanecem disponíveis. Os novos campos e fotos são guardados dentro de `conteudo` (JSONB), sem alterar o SQL. Foto é reduzida no navegador antes do envio. PDFs são gerados pela opção Imprimir > Salvar como PDF.
 
-## 2. GitHub
-1. Crie um repositório privado ou público (se público, lembre que `config.js` estará visível; isso é esperado para chave publicável protegida com RLS).
-2. Envie todos os arquivos da pasta para a raiz do repositório. **Não envie apenas o zip**.
+## Segurança antes do lançamento
+A confirmação de e-mail foi desativada temporariamente nos testes. Reative **Confirm email** em Supabase Authentication > Sign In / Providers e configure um SMTP com domínio de envio verificado antes de abrir cadastro ao público. Adicione aviso de privacidade e política de retenção apropriados antes de coletar dados de alunos, especialmente menores de idade. Não envie chave secreta ao GitHub.
 
-## 3. Render
-1. Acesse https://dashboard.render.com/ > **New > Static Site** (ou **New > Blueprint** para usar `render.yaml`).
-2. Conecte o repositório do GitHub.
-3. Para Static Site manual, use: **Build command** `echo pronto` e **Publish directory** `.`.
-4. Publique e copie a URL `https://...onrender.com`.
-5. No Supabase, abra **Authentication > URL Configuration** e configure **Site URL** com essa URL. Acrescente a URL em **Redirect URLs** (por exemplo `https://seu-site.onrender.com/**`) para links de confirmação e recuperação.
-
-## Como funciona
-- Qualquer visitante pode preencher e imprimir usando **Salvar em PDF** (impressão do navegador; escolha "Salvar como PDF").
-- Para salvar/abrir/excluir currículos na nuvem, o visitante precisa criar conta e entrar.
-- RLS protege os registros para que cada conta veja apenas os próprios currículos.
-- O usuário deve revisar os dados antes de compartilhar. O site não precisa coletar CPF ou endereço completo.
-- Não existe painel administrativo nem acesso institucional a currículos de outros usuários nesta versão.
-
-## Testes recomendados
-- Criar conta A, confirmar e-mail, salvar currículo; sair e entrar de novo; reabrir.
-- Criar conta B e verificar que nenhum currículo da conta A aparece.
-- Testar impressão em A4 em desktop e celular.
-- Testar recuperação de senha; o Supabase fornece o link de redefinição. Ao abrir o link de recuperação, a página solicita uma nova senha pelo navegador.
-
-## Privacidade
-O nome, contato, escolaridade e experiência são dados pessoais. Crie uma política de privacidade e defina retenção/exclusão de contas antes de lançar publicamente. O Supabase hospeda os dados conforme a região configurada no projeto. Evite inserir credenciais secretas no GitHub.
+## Modelo
+O currículo replica a organização visual do exemplo enviado (faixa azul, foto circular, duas colunas, títulos azuis e seções). Não reutiliza a foto nem os dados da pessoa da imagem de referência.
