@@ -1,0 +1,35 @@
+MICROLINS CACOAL — LIBERAÇÃO DE PDF POR PIX OU CÓDIGO
+
+O QUE FOI INCLUÍDO
+- Preço de R$ 10,00 por currículo salvo (liberação permanente deste currículo).
+- Código de uso único criado pela conta administradora. O primeiro resgate consome o código de forma atômica no Supabase; o mesmo código não pode liberar outro currículo.
+- Usuário pode pagar via Pix COPIANDO A CHAVE CADASTRADA e solicitar confirmação.
+- Administrador vê pedidos pendentes, informa chave Pix e confirma o dinheiro recebido no extrato antes de aprovar.
+- O botão PDF consulta a liberação no Supabase; a liberação fica na conta que a utilizou.
+- O DISC obrigatório e os seis modelos foram preservados.
+
+INSTALAÇÃO (NA ORDEM)
+1. No Supabase > SQL Editor, execute INSTALAR_PAGAMENTO_E_CODIGOS.sql INTEIRO. Ele pressupõe que a configuração administrativa anterior já funciona (curriculos_admins e is_curriculos_admin).
+   Atenção: o SQL cria novas tabelas, políticas e funções. NÃO o execute em um banco diferente sem revisar.
+2. No GitHub do projeto Microlins-Curriculos, substitua index.html e app.js pelos arquivos deste ZIP.
+   NÃO modifique config.js, senhas nem chaves Supabase. Arquivos logo-microlins.png e teste-disc.html são mantidos.
+3. Aguarde publicação no Render e atualize o navegador (Ctrl+F5).
+4. Entre com a conta administradora já autorizada (microlinscacoal@outlook.com).
+5. Em Administração > Pagamentos e códigos, informe a CHAVE PIX REAL e o NOME DO RECEBEDOR e clique em Salvar dados Pix. Verifique antes que a chave pertence à conta correta.
+6. Clique em Gerar novo código para criar códigos únicos, ou em Atualizar pedidos e códigos para conferir solicitações Pix.
+7. Aluno precisa salvar um currículo na nuvem. Em Meus currículos > Visualizar > Baixar PDF / Liberar:
+   - Pode usar código único;
+   - Ou pagar R$ 10,00 via Pix e solicitar conferência usando o nome do pagador.
+8. Após confirmar no seu banco o recebimento de R$ 10,00, o administrador pode clicar em Confirmar recebimento e liberar.
+9. Aluno pode clicar em Verificar liberação, voltar ao currículo salvo e imprimir/salvar PDF.
+
+IMPORTANTE — LIMITAÇÕES
+- PIX NÃO É AUTOMÁTICO: o sistema NÃO consulta o banco nem comprova pagamento por si. O usuário dizer 'Já paguei' não libera o PDF. Não aprove sem conferir seu extrato e o pagador.
+- A chave Pix ainda precisa ser cadastrada pelo admin; nenhum dado bancário real foi inventado.
+- Cada código pode ser usado UMA vez; ao resgatá-lo, libera somente o currículo selecionado. Esse currículo pode ser baixado outras vezes sem novo pagamento.
+- Essa é uma restrição de interface e de autorização no banco. Como currículos completos ainda são apresentados como HTML no navegador, usuários com conhecimento técnico podem contornar o bloqueio do PDF ou copiar conteúdo. Bloqueio técnico robusto exige gerar/entregar o PDF num servidor protegido, após consulta à liberação (p.ex., Edge Function Supabase com armazenamento privado).
+- Um currículo já aberto não é protegido contra captura de tela ou cópia.
+- Os dados do cliente são pessoais; não solicite CPF, RG, cartão, credenciais bancárias ou comprovante com informações sensíveis no formulário.
+- CÓDIGO NÃO É MEIO DE PAGAMENTO: admin distribui códigos conforme a política da escola.
+- Recomenda-se testar conta aluno + administrador no site publicado antes de anunciar cobrança.
+- A conexão e o fluxo real com Supabase não foram testados neste ambiente.

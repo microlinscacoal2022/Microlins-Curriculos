@@ -15,6 +15,7 @@ discCss.textContent=`
 `;
 document.head.append(discCss);
 
+let paymentResumeId=null, paymentPixKey="", lastAdminCode="", exportAllowed=false;
 let isAdmin=false, adminRows=[], adminOffset=0, adminHasMore=false, adminViewing=null;
 let user=null, rows=[], editingId=null, viewingId=null, photoData='',selectedTemplate='azul',discResult=null,accountDisc=null,discSaving=false;
 const msg=(id,s)=>{$(id).textContent=s;};
@@ -152,7 +153,7 @@ function navigate(page){
   page='disc';
  }
  if(page==='admin'&&!isAdmin)page='criar';
- const valid=['criar','disc','modelos','visualizar','salvos','admin'].includes(page)?page:'criar';$('pageCriar').hidden=valid!=='criar';$('pageDisc').hidden=valid!=='disc';$('pageModelos').hidden=valid!=='modelos';$('pageVisualizar').hidden=valid!=='visualizar';$('pageSalvos').hidden=valid!=='salvos';$('pageAdmin').hidden=valid!=='admin';if(valid==='admin'&&isAdmin&&!adminRows.length)loadAdmin(true);document.querySelectorAll('[data-page]').forEach(b=>{b.classList.toggle('active',b.dataset.page===valid);b.setAttribute('aria-current',b.dataset.page===valid?'page':'false');});if(location.hash!=='#'+valid)history.replaceState(null,'','#'+valid);window.scrollTo(0,0);}
+ const valid=['criar','disc','modelos','visualizar','salvos','admin','pagamento'].includes(page)?page:'criar';$('pageCriar').hidden=valid!=='criar';$('pageDisc').hidden=valid!=='disc';$('pageModelos').hidden=valid!=='modelos';$('pageVisualizar').hidden=valid!=='visualizar';$('pageSalvos').hidden=valid!=='salvos';$('pageAdmin').hidden=valid!=='admin';$('pagePagamento').hidden=valid!=='pagamento';if(valid==='admin'&&isAdmin&&!adminRows.length)loadAdmin(true);document.querySelectorAll('[data-page]').forEach(b=>{b.classList.toggle('active',b.dataset.page===valid);b.setAttribute('aria-current',b.dataset.page===valid?'page':'false');});if(location.hash!=='#'+valid)history.replaceState(null,'','#'+valid);window.scrollTo(0,0);}
 function authScreen(){const logged=!!user;$('authScreen').hidden=logged;$('workspace').hidden=!logged;if(logged){checkAdmin();msg('authstatus',`Conectado: ${user.email}`);updateUsername();syncAccountDisc();}else{isAdmin=false;adminRows=[];adminViewing=null;$('navAdmin').hidden=true;$('pageAdmin').hidden=true;$('authPassword').value='';accountDisc=null;discResult=null;resetEditor();updateDiscPage();rows=[];viewingId=null;$('savedViewer').hidden=true;}}
 function selectedCard(row){const card=document.createElement('div');card.className='saved-card';const title=document.createElement('h3');title.textContent=row.nome||'Currículo';const date=document.createElement('small');date.textContent=`Salvo em ${new Date(row.updated_at||Date.now()).toLocaleDateString('pt-BR')}`;const btn=document.createElement('div');btn.className='actions';const open=document.createElement('button');open.textContent='Visualizar';open.onclick=()=>showSaved(row.id);const edit=document.createElement('button');edit.className='light';edit.textContent='Editar';edit.onclick=()=>editSaved(row.id);const del=document.createElement('button');del.className='danger';del.textContent='Excluir';del.onclick=()=>deleteSaved(row.id);btn.append(open,edit,del);card.append(title,date,btn);return card;}
 function renderList(){const list=$('savedList');list.replaceChildren();if(!rows.length){const p=document.createElement('p');p.textContent='Você ainda não tem currículos salvos. Clique em Criar currículo para começar.';list.append(p);}else rows.forEach(r=>list.append(selectedCard(r)));}
@@ -217,13 +218,13 @@ $('foto').onchange=async()=>{const file=$('foto').files?.[0];if(!file)return;if(
 $('removePhoto').onclick=()=>{photoData='';$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';renderResume($('previewMount'),values());};
 async function saveCloudResume(){if(!user)return;const d=values();if(!d.nome)return msg('editorMessage','Preencha o nome completo antes de salvar.');if(!requireDisc())return;const payload={nome:d.nome,conteudo:d,usuario_id:user.id};$('saveCloud').disabled=true;try{const q=editingId?client.from('curriculos').update(payload).eq('id',editingId).eq('usuario_id',user.id):client.from('curriculos').insert(payload);const {error}=await q;if(error)throw error;resetEditor();await refresh();navigate('salvos');msg('cloudmessage','Currículo salvo com sucesso! O formulário de criação já está em branco.');}catch(error){msg('editorMessage','Não foi possível salvar: '+error.message);}finally{$('saveCloud').disabled=false;}}
 $('saveCloud').onclick=saveCloudResume; $('saveChosen').onclick=saveCloudResume;
-$('closeSaved').onclick=()=>{$('savedViewer').hidden=true;viewingId=null;};$('printSaved').onclick=()=>printResume('savedMount');$('pdf').onclick=()=>{if(!$('nome').value.trim())return msg('editorMessage','Preencha o nome antes de gerar o PDF.');if(!requireDisc())return;renderResume($('previewMount'),values());printResume('previewMount');};$('editSaved').onclick=()=>editSaved(viewingId);
+$('closeSaved').onclick=()=>{$('savedViewer').hidden=true;viewingId=null;};$('printSaved').onclick=()=>gateExport(viewingId);$('pdf').onclick=()=>{if(!$('nome').value.trim())return msg('editorMessage','Preencha o nome antes de gerar o PDF.');if(!requireDisc())return;renderResume($('previewMount'),values());msg('editorMessage','Salve o currículo para liberar o PDF por Pix ou código.');};$('editSaved').onclick=()=>editSaved(viewingId);
 function printResume(id){ // Mantém somente o documento selecionado na área de impressão.
  document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));
  const section=id==='adminMount'?'pageAdmin':id==='savedMount'?'pageSalvos':id==='selectedMount'?'pageVisualizar':'pageCriar';$(section).classList.add('print-target');
- $('previewMount').hidden=id!=='previewMount';$('savedMount').hidden=id!=='savedMount';$('selectedMount').hidden=id!=='selectedMount';$('adminMount').hidden=id!=='adminMount';
+ exportAllowed=true;document.body.classList.add('print-authorized');$('previewMount').hidden=id!=='previewMount';$('savedMount').hidden=id!=='savedMount';$('selectedMount').hidden=id!=='selectedMount';$('adminMount').hidden=id!=='adminMount';
  window.print();}
-window.addEventListener('afterprint',()=>{$('previewMount').hidden=false;$('savedMount').hidden=false;$('selectedMount').hidden=false;$('adminMount').hidden=false;document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));});
+window.addEventListener('afterprint',()=>{exportAllowed=false;document.body.classList.remove('print-authorized');$('previewMount').hidden=false;$('savedMount').hidden=false;$('selectedMount').hidden=false;$('adminMount').hidden=false;document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));});
 window.addEventListener('hashchange',()=>{if(user)navigate(location.hash.slice(1));});
 
 const templateNames=[['azul','Azul do portal','Identidade azul e branca'],['cinza-laranja','Cinza e laranja','Designer gráfico moderno'],['verde','Verde escuro','Clássico com foto'],['preto-laranja','Preto e laranja','Profissional de destaque'],['preto-branco','Preto e branco','Simples sem foto'],['preto-cinza','Preto e cinza','Jovem aprendiz minimalista']];
@@ -234,7 +235,7 @@ $('previewChosen').onclick=()=>{if(!requireDisc())return;renderChosen();navigate
 $('returnToForm').onclick=()=>navigate('criar');
 $('changeModel').onclick=()=>{buildGallery();navigate('modelos');};
 $('backToForm').onclick=()=>navigate('criar');
-$('printChosen').onclick=()=>{if(!requireDisc())return;renderChosen();printResume('selectedMount');};
+$('printChosen').onclick=()=>{if(!requireDisc())return;msg('chosenMessage','Para liberar o PDF, salve o currículo na nuvem e abra-o em Meus currículos.');};
 
 // A segurança efetiva é garantida pelas políticas RLS no Supabase.
 // A interface nunca recebe ou usa a chave service_role.
@@ -245,7 +246,7 @@ async function checkAdmin(){
  isAdmin=!error&&data===true;
  $('navAdmin').hidden=!isAdmin;
  if(error&&location.hash==='#admin')msg('authstatus','Administração não configurada no Supabase.');
- if(!isAdmin){adminRows=[];adminViewing=null;$('pageAdmin').hidden=true;}
+ if(isAdmin){loadAdminPayments();}if(!isAdmin){adminRows=[];adminViewing=null;$('pageAdmin').hidden=true;}
 }
 async function loadAdmin(reset=true){
  if(!isAdmin||!user)return;
@@ -287,8 +288,119 @@ async function deleteAdminResume(r){
  adminRows=adminRows.filter(x=>x.id!==r.id);renderAdminList();msg('adminMessage','Currículo excluído.');
 }
 
+
+// Liberação por código (consumo atômico no banco) ou Pix com aprovação manual.
+const payMsg=s=>msg('paymentMessage',s);
+const escapeText=v=>String(v??'');
+async function getPixConfig(){
+ const {data,error}=await client.from('curriculos_pix_config').select('chave_pix,recebedor,valor_centavos').eq('id',1).maybeSingle();
+ if(error){$('pixInstructions').textContent='Configure o SQL de pagamento no Supabase.';return;}
+ paymentPixKey=data?.chave_pix||'';
+ $('pixInstructions').textContent=paymentPixKey?`Valor: R$ 10,00 · Recebedor: ${data.recebedor} · Chave Pix: ${paymentPixKey}`:'A chave Pix ainda não foi cadastrada pelo administrador.';
+ $('copyPix').disabled=!paymentPixKey;$('requestPix').disabled=!paymentPixKey;
+}
+async function gateExport(id){
+ if(!user||!id)return alert('Primeiro salve e abra um currículo da sua conta.');
+ const row=rows.find(r=>String(r.id)===String(id));
+ if(!row)return alert('Currículo não encontrado.');
+ if(isAdmin){printResume('savedMount');return;}
+ const {data,error}=await client.rpc('pode_exportar_curriculo',{p_curriculo:String(id)});
+ if(error){alert('O sistema de liberação ainda não está instalado no Supabase: '+error.message);return;}
+ if(data===true){printResume('savedMount');return;}
+ paymentResumeId=String(id);
+ $('paymentResumeName').textContent='Currículo: '+(row.nome||'Sem nome');
+ $('redemptionCode').value='';payMsg('Selecione uma forma de liberação.');
+ await getPixConfig();navigate('pagamento');
+ const {data:requests}=await client.from('curriculos_pix_pedidos').select('status,solicitado_em').eq('curriculo_id',paymentResumeId).eq('usuario_id',user.id).order('solicitado_em',{ascending:false}).limit(1);
+ if(requests?.[0]?.status==='pendente')payMsg('Seu Pix está aguardando conferência do administrador. Se já foi aprovado, clique em Verificar liberação.');
+}
+$('redeemCode').onclick=async()=>{
+ if(!paymentResumeId)return;
+ const code=$('redemptionCode').value.trim();if(!code)return payMsg('Informe um código.');
+ $('redeemCode').disabled=true;
+ const {error}=await client.rpc('resgatar_codigo_curriculo',{p_codigo:code,p_curriculo:paymentResumeId});
+ $('redeemCode').disabled=false;
+ if(error)return payMsg('Não foi possível usar o código: '+error.message);
+ payMsg('Código aceito! Seu currículo está liberado permanentemente para esta conta. Abra-o em Meus currículos para salvar em PDF.');
+};
+$('copyPix').onclick=async()=>{if(!paymentPixKey)return;try{await navigator.clipboard.writeText(paymentPixKey);payMsg('Chave Pix copiada.');}catch(e){payMsg('Copie a chave informada acima.');}};
+$('requestPix').onclick=async()=>{
+ if(!paymentResumeId||!paymentPixKey)return;
+ if($('pixPayer').value.trim().length<3)return payMsg('Informe o nome de quem realizou o Pix.');
+ if(!confirm('Você já realizou o Pix de R$ 10,00? A liberação ocorrerá apenas após a conferência no extrato pelo administrador.'))return;
+ $('requestPix').disabled=true;
+ const {error}=await client.rpc('pedir_liberacao_pix',{p_curriculo:paymentResumeId,p_pagador_nome:$('pixPayer').value.trim()});
+ $('requestPix').disabled=false;
+ payMsg(error?'Não foi possível enviar solicitação: '+error.message:'Solicitação enviada. Aguarde a conferência do pagamento pelo administrador.');
+};
+$('paymentCheck').onclick=async()=>{
+ if(!paymentResumeId)return;
+ const {data,error}=await client.rpc('pode_exportar_curriculo',{p_curriculo:paymentResumeId});
+ if(error)return payMsg('Erro: '+error.message);
+ if(data===true){payMsg('Currículo liberado!');showSaved(rows.find(r=>String(r.id)===paymentResumeId)?.id);}
+ else payMsg('Ainda não há autorização de download. Se enviou Pix, aguarde a conferência.');
+};
+$('paymentBack').onclick=()=>navigate('salvos');
+$('adminGenerateCode').onclick=async()=>{
+ if(!isAdmin)return;
+ $('adminGenerateCode').disabled=true;
+ const {data,error}=await client.rpc('criar_codigo_curriculo');
+ $('adminGenerateCode').disabled=false;
+ if(error)return msg('adminPaymentMessage','Erro ao gerar código: '+error.message);
+ lastAdminCode=data;$('adminNewCode').textContent=data;
+ $('adminCopyCode').hidden=false;msg('adminPaymentMessage','Código criado. Entregue ao aluno; somente o primeiro uso será aceito.');
+ loadAdminPayments();
+};
+$('adminCopyCode').onclick=async()=>{if(lastAdminCode){try{await navigator.clipboard.writeText(lastAdminCode);msg('adminPaymentMessage','Código copiado.');}catch(e){msg('adminPaymentMessage','Selecione e copie o código exibido.');}}};
+$('adminSavePix').onclick=async()=>{
+ if(!isAdmin)return;
+ const key=$('adminPixKey').value.trim(),name=$('adminPixName').value.trim();
+ if(key.length<5||name.length<2)return msg('adminPaymentMessage','Informe a chave Pix e o recebedor.');
+ const {error}=await client.rpc('configurar_chave_pix',{p_chave:key,p_recebedor:name});
+ msg('adminPaymentMessage',error?'Erro: '+error.message:'Dados Pix salvos. Confirme que a chave pertence ao recebedor indicado.');
+};
+$('adminLoadPayments').onclick=()=>loadAdminPayments();
+async function loadAdminPayments(){
+ if(!isAdmin||!user)return;
+ const owner=user.id;
+ const [config,requests,codes]=await Promise.all([
+ client.from('curriculos_pix_config').select('chave_pix,recebedor').eq('id',1).maybeSingle(),
+ client.from('curriculos_pix_pedidos').select('id,curriculo_id,usuario_id,pagador_nome,valor_centavos,solicitado_em,status').eq('status','pendente').order('solicitado_em',{ascending:true}).limit(100),
+ client.from('curriculos_codigos').select('codigo,usado_em,criado_em').order('criado_em',{ascending:false}).limit(40)
+ ]);
+ if(!isAdmin||owner!==user?.id)return;
+ if(config.data){$('adminPixKey').value=config.data.chave_pix||'';$('adminPixName').value=config.data.recebedor||'';}
+ const target=$('adminPixRequests');target.replaceChildren();
+ if(requests.error){target.textContent='Não foi possível carregar os pedidos: '+requests.error.message;}else if(!requests.data?.length){target.textContent='Nenhum pedido pendente.';}else{
+   const ids=[...new Set(requests.data.map(r=>String(r.curriculo_id)))];
+   // A consulta administrativa já respeita a política de acesso configurada para currículos.
+   const {data:resumes}=await client.from('curriculos').select('id,nome');
+   const byId=new Map((resumes||[]).map(r=>[String(r.id),r.nome]));
+   for(const r of requests.data){
+    const box=document.createElement('div');box.className='admin-pay-row';
+    const summary=document.createElement('p');summary.textContent=`Currículo: ${byId.get(String(r.curriculo_id))||r.curriculo_id} | Pagador informado: ${r.pagador_nome} | Usuário: ${r.usuario_id} | Valor: R$ 10,00 | Pedido: ${new Date(r.solicitado_em).toLocaleString('pt-BR')}`;
+    const buttons=document.createElement('div');buttons.className='actions';
+    for(const [title,approved] of [['Confirmar recebimento e liberar',true],['Recusar pedido',false]]){
+      const b=document.createElement('button');b.type='button';b.className=approved?'':'light';b.textContent=title;
+      b.onclick=async()=>{
+       if(!confirm(approved?'Você conferiu no extrato o recebimento de R$ 10,00 referente a este pedido?':'Recusar a solicitação de pagamento?'))return;
+       b.disabled=true;
+       const {error}=await client.rpc('decidir_pedido_pix',{p_pedido:r.id,p_aprovar:approved});
+       if(error){b.disabled=false;return msg('adminPaymentMessage','Erro: '+error.message);}
+       msg('adminPaymentMessage',approved?'Pagamento confirmado e currículo liberado.':'Solicitação recusada.');loadAdminPayments();
+      };buttons.append(b);
+    }
+    box.append(summary,buttons);target.append(box);
+   }
+ }
+ const list=$('adminCodeList');list.replaceChildren();
+ if(codes.error){list.textContent='Não foi possível carregar códigos: '+codes.error.message;}
+ else if(!codes.data?.length){list.textContent='Nenhum código gerado.';}
+ else for(const r of codes.data){const p=document.createElement('p');p.className='admin-pay-row';p.textContent=`${r.codigo} — ${r.usado_em?'USADO':'DISPONÍVEL'} — criado em ${new Date(r.criado_em).toLocaleString('pt-BR')}`;list.append(p);}
+}
+
 client.auth.onAuthStateChange((event,session)=>{
  if(event==='PASSWORD_RECOVERY'){setTimeout(async()=>{const pass=prompt('Digite uma nova senha com pelo menos 6 caracteres:');if(pass===null)return;if(pass.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');const {error}=await client.auth.updateUser({password:pass});alert(error?error.message:'Senha atualizada com sucesso.');},0);}
- const previous=user?.id;user=session?.user||null;if(previous!==user?.id){isAdmin=false;adminRows=[];$('navAdmin').hidden=true;}authScreen();if(user&&previous!==user.id){resetEditor();navigate('criar');setTimeout(()=>refresh(),0);}else if(user){renderResume($('previewMount'),values());}
+ const previous=user?.id;user=session?.user||null;if(previous!==user?.id){paymentResumeId=null;isAdmin=false;adminRows=[];$('navAdmin').hidden=true;}authScreen();if(user&&previous!==user.id){resetEditor();navigate('criar');setTimeout(()=>refresh(),0);}else if(user){renderResume($('previewMount'),values());}
 });
 resetEditor();const {data:{user:verifiedUser}}=await client.auth.getUser();user=verifiedUser||null;authScreen();if(user){resetEditor();navigate('criar');await refresh();}
