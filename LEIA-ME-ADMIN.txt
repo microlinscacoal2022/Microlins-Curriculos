@@ -1,0 +1,32 @@
+MICROLINS CACOAL — PAINEL ADMINISTRATIVO
+
+NOVO: Administrador autorizado pode ver currículos de todas as contas, pesquisar, visualizar, imprimir em PDF e excluir documentos com confirmação.
+
+PASSO 1 — CONTA ADMIN
+Crie primeiro uma conta normal no site com um e-mail próprio para administração. Use uma senha forte e exclusiva; não compartilhe com os alunos. Ative/verifique a confirmação de e-mail no Supabase antes de abrir o site ao público.
+
+PASSO 2 — SUPABASE (OBRIGATÓRIO)
+No mesmo projeto Supabase já usado pelo site, abra SQL Editor. Abra INSTALAR_ADMIN_SUPABASE.sql, substitua SUBSTITUA-PELO-EMAIL-DO-ADMIN@exemplo.com pelo e-mail real da conta cadastrada e execute o script como proprietário do projeto.
+Verifique na última consulta SQL se o e-mail aparece na lista. Se não aparecer, confira se a conta já foi criada e se o e-mail está correto.
+NÃO cole senhas, a chave service_role ou o SQL na área pública do site. NÃO desative Row Level Security (RLS).
+
+PASSO 3 — SITE
+Extraia o ZIP e envie ao GitHub os arquivos index.html e app.js na raiz do repositório. Eles substituem os existentes. Os arquivos logo-microlins.png e teste-disc.html acompanham o pacote como referência; não precisam ser substituídos se já estão publicados. NÃO substitua config.js.
+Após o deploy no Render, saia da conta e entre com a conta promovida a admin. No menu aparecerá 'Administração'.
+
+COMO FUNCIONA
+- Todos os alunos continuam acessando apenas os próprios currículos.
+- Somente contas listadas na tabela curriculos_admins ganham permissão extra de leitura e exclusão.
+- A lista carrega 50 currículos de cada vez; 'Carregar mais' continua a listagem. A pesquisa vale para os registros já carregados.
+- O botão Excluir apaga definitivamente o currículo; não exclui a conta do aluno.
+- Não são criados logins/senhas fixos nos arquivos do site.
+- O resultado DISC continua vinculado à conta original do aluno.
+- Esta versão não oferece edição de currículos de terceiros, nem gerenciamento de usuários/senhas. Essas funções exigiriam controles adicionais.
+
+TESTE
+1. Entre como administrador e veja o botão Administração.
+2. Entre como aluno e confirme que o botão não aparece.
+3. Teste com duas contas distintas: admin vê documentos de ambas; aluno vê somente os próprios.
+4. Confirme que exclusões administrativas têm confirmação e que salvar/visualizar PDF funciona.
+
+IMPORTANTE: a integração com o Supabase precisa ser configurada e testada no projeto real; verificar sintaxe não comprova as permissões do banco.

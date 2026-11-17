@@ -15,6 +15,7 @@ discCss.textContent=`
 `;
 document.head.append(discCss);
 
+let isAdmin=false, adminRows=[], adminOffset=0, adminHasMore=false, adminViewing=null;
 let user=null, rows=[], editingId=null, viewingId=null, photoData='',selectedTemplate='azul',discResult=null,accountDisc=null,discSaving=false;
 const msg=(id,s)=>{$(id).textContent=s;};
 const displayName=u=>{const name=u?.user_metadata?.full_name||u?.user_metadata?.name;return String(name||u?.email?.split('@')[0]||'Usuário').trim().slice(0,80);};
@@ -150,8 +151,9 @@ function navigate(page){
   msg('discPageStatus','Para continuar, conclua primeiro as 24 perguntas do teste DISC.');
   page='disc';
  }
- const valid=['criar','disc','modelos','visualizar','salvos'].includes(page)?page:'criar';$('pageCriar').hidden=valid!=='criar';$('pageDisc').hidden=valid!=='disc';$('pageModelos').hidden=valid!=='modelos';$('pageVisualizar').hidden=valid!=='visualizar';$('pageSalvos').hidden=valid!=='salvos';document.querySelectorAll('[data-page]').forEach(b=>{b.classList.toggle('active',b.dataset.page===valid);b.setAttribute('aria-current',b.dataset.page===valid?'page':'false');});if(location.hash!=='#'+valid)history.replaceState(null,'','#'+valid);window.scrollTo(0,0);}
-function authScreen(){const logged=!!user;$('authScreen').hidden=logged;$('workspace').hidden=!logged;if(logged){msg('authstatus',`Conectado: ${user.email}`);updateUsername();syncAccountDisc();}else{$('authPassword').value='';accountDisc=null;discResult=null;resetEditor();updateDiscPage();rows=[];viewingId=null;$('savedViewer').hidden=true;}}
+ if(page==='admin'&&!isAdmin)page='criar';
+ const valid=['criar','disc','modelos','visualizar','salvos','admin'].includes(page)?page:'criar';$('pageCriar').hidden=valid!=='criar';$('pageDisc').hidden=valid!=='disc';$('pageModelos').hidden=valid!=='modelos';$('pageVisualizar').hidden=valid!=='visualizar';$('pageSalvos').hidden=valid!=='salvos';$('pageAdmin').hidden=valid!=='admin';if(valid==='admin'&&isAdmin&&!adminRows.length)loadAdmin(true);document.querySelectorAll('[data-page]').forEach(b=>{b.classList.toggle('active',b.dataset.page===valid);b.setAttribute('aria-current',b.dataset.page===valid?'page':'false');});if(location.hash!=='#'+valid)history.replaceState(null,'','#'+valid);window.scrollTo(0,0);}
+function authScreen(){const logged=!!user;$('authScreen').hidden=logged;$('workspace').hidden=!logged;if(logged){checkAdmin();msg('authstatus',`Conectado: ${user.email}`);updateUsername();syncAccountDisc();}else{isAdmin=false;adminRows=[];adminViewing=null;$('navAdmin').hidden=true;$('pageAdmin').hidden=true;$('authPassword').value='';accountDisc=null;discResult=null;resetEditor();updateDiscPage();rows=[];viewingId=null;$('savedViewer').hidden=true;}}
 function selectedCard(row){const card=document.createElement('div');card.className='saved-card';const title=document.createElement('h3');title.textContent=row.nome||'Currículo';const date=document.createElement('small');date.textContent=`Salvo em ${new Date(row.updated_at||Date.now()).toLocaleDateString('pt-BR')}`;const btn=document.createElement('div');btn.className='actions';const open=document.createElement('button');open.textContent='Visualizar';open.onclick=()=>showSaved(row.id);const edit=document.createElement('button');edit.className='light';edit.textContent='Editar';edit.onclick=()=>editSaved(row.id);const del=document.createElement('button');del.className='danger';del.textContent='Excluir';del.onclick=()=>deleteSaved(row.id);btn.append(open,edit,del);card.append(title,date,btn);return card;}
 function renderList(){const list=$('savedList');list.replaceChildren();if(!rows.length){const p=document.createElement('p');p.textContent='Você ainda não tem currículos salvos. Clique em Criar currículo para começar.';list.append(p);}else rows.forEach(r=>list.append(selectedCard(r)));}
 async function refresh(){
@@ -208,6 +210,7 @@ $('editUsername').onclick=async()=>{if(!user)return;const name=prompt('Qual nome
 $('signin').onclick=()=>submitAuth('signIn');$('signup').onclick=()=>submitAuth('signUp');
 $('forgot').onclick=async()=>{const email=$('authEmail').value.trim();if(!email)return msg('authmessage','Informe seu e-mail para recuperar a senha.');const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin});msg('authmessage',error?error.message:'Se o e-mail estiver cadastrado, você receberá instruções.');};
 $('logout').onclick=async()=>{await client.auth.signOut();user=null;authScreen();history.replaceState(null,'',location.pathname);};
+$('navAdmin').onclick=()=>{if(isAdmin)navigate('admin')};$('adminRefresh').onclick=()=>loadAdmin(true);$('adminMore').onclick=()=>loadAdmin(false);$('adminSearch').oninput=renderAdminList;$('adminClose').onclick=()=>{$('adminViewer').hidden=true;adminViewing=null};$('adminPrint').onclick=()=>{if(adminViewing)printResume('adminMount')};
 $('navDisc').onclick=()=>navigate('disc');$('goDisc').onclick=()=>navigate('disc');$('navCriar').onclick=()=>{if(editingId)resetEditor();navigate('criar');};$('navModelos').onclick=()=>{if(!requireDisc())return;buildGallery();navigate('modelos');};$('navVisualizar').onclick=()=>{if(!requireDisc())return;renderChosen();navigate('visualizar');};$('navSalvos').onclick=()=>navigate('salvos');$('cancelEdit').onclick=()=>{resetEditor();navigate('criar');};$('newResume').onclick=()=>resetEditor();
 for(const k of keys)$(k).addEventListener('input',()=>renderResume($('previewMount'),values()));
 $('foto').onchange=async()=>{const file=$('foto').files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type))return msg('editorMessage','Escolha uma foto JPG, PNG ou WEBP.');if(file.size>12*1024*1024)return msg('editorMessage','A foto deve ter até 12 MB.');const read=()=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});try{const src=await read();const im=new Image();im.src=src;await im.decode();const side=460,ratio=Math.min(1,side/Math.max(im.width,im.height));const canvas=document.createElement('canvas');canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);photoData=canvas.toDataURL('image/jpeg',.76);$('photoStatus').textContent='Foto adicionada';$('removePhoto').hidden=false;msg('editorMessage','Foto pronta para salvar.');renderResume($('previewMount'),values());}catch(e){msg('editorMessage','Não foi possível abrir a foto. Tente outra imagem.');}};
@@ -217,10 +220,10 @@ $('saveCloud').onclick=saveCloudResume; $('saveChosen').onclick=saveCloudResume;
 $('closeSaved').onclick=()=>{$('savedViewer').hidden=true;viewingId=null;};$('printSaved').onclick=()=>printResume('savedMount');$('pdf').onclick=()=>{if(!$('nome').value.trim())return msg('editorMessage','Preencha o nome antes de gerar o PDF.');if(!requireDisc())return;renderResume($('previewMount'),values());printResume('previewMount');};$('editSaved').onclick=()=>editSaved(viewingId);
 function printResume(id){ // Mantém somente o documento selecionado na área de impressão.
  document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));
- const section=id==='savedMount'?'pageSalvos':id==='selectedMount'?'pageVisualizar':'pageCriar';$(section).classList.add('print-target');
- $('previewMount').hidden=id!=='previewMount';$('savedMount').hidden=id!=='savedMount';$('selectedMount').hidden=id!=='selectedMount';
+ const section=id==='adminMount'?'pageAdmin':id==='savedMount'?'pageSalvos':id==='selectedMount'?'pageVisualizar':'pageCriar';$(section).classList.add('print-target');
+ $('previewMount').hidden=id!=='previewMount';$('savedMount').hidden=id!=='savedMount';$('selectedMount').hidden=id!=='selectedMount';$('adminMount').hidden=id!=='adminMount';
  window.print();}
-window.addEventListener('afterprint',()=>{$('previewMount').hidden=false;$('savedMount').hidden=false;$('selectedMount').hidden=false;document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));});
+window.addEventListener('afterprint',()=>{$('previewMount').hidden=false;$('savedMount').hidden=false;$('selectedMount').hidden=false;$('adminMount').hidden=false;document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));});
 window.addEventListener('hashchange',()=>{if(user)navigate(location.hash.slice(1));});
 
 const templateNames=[['azul','Azul do portal','Identidade azul e branca'],['cinza-laranja','Cinza e laranja','Designer gráfico moderno'],['verde','Verde escuro','Clássico com foto'],['preto-laranja','Preto e laranja','Profissional de destaque'],['preto-branco','Preto e branco','Simples sem foto'],['preto-cinza','Preto e cinza','Jovem aprendiz minimalista']];
@@ -233,8 +236,59 @@ $('changeModel').onclick=()=>{buildGallery();navigate('modelos');};
 $('backToForm').onclick=()=>navigate('criar');
 $('printChosen').onclick=()=>{if(!requireDisc())return;renderChosen();printResume('selectedMount');};
 
+// A segurança efetiva é garantida pelas políticas RLS no Supabase.
+// A interface nunca recebe ou usa a chave service_role.
+async function checkAdmin(){
+ const id=user?.id;if(!id)return;
+ const {data,error}=await client.rpc('is_curriculos_admin');
+ if(id!==user?.id)return;
+ isAdmin=!error&&data===true;
+ $('navAdmin').hidden=!isAdmin;
+ if(error&&location.hash==='#admin')msg('authstatus','Administração não configurada no Supabase.');
+ if(!isAdmin){adminRows=[];adminViewing=null;$('pageAdmin').hidden=true;}
+}
+async function loadAdmin(reset=true){
+ if(!isAdmin||!user)return;
+ if(reset){adminOffset=0;adminRows=[];adminViewing=null;$('adminViewer').hidden=true;}
+ const owner=user.id;
+ msg('adminMessage','Carregando currículos...');
+ const {data,error}=await client.from('curriculos')
+  .select('id,usuario_id,nome,conteudo,updated_at')
+  .order('updated_at',{ascending:false})
+  .range(adminOffset,adminOffset+49);
+ if(owner!==user?.id||!isAdmin)return;
+ if(error){msg('adminMessage','Falha ao carregar: '+error.message+'. Verifique a configuração SQL de administrador.');return;}
+ adminRows.push(...(data||[]));adminOffset+=data?.length||0;
+ adminHasMore=(data?.length||0)===50;
+ $('adminMore').hidden=!adminHasMore;
+ msg('adminMessage','');renderAdminList();
+}
+function renderAdminList(){
+ const list=$('adminList');list.replaceChildren();
+ const query=$('adminSearch').value.trim().toLocaleLowerCase('pt-BR');
+ const visible=adminRows.filter(r=>[r.nome,r.conteudo?.email,r.conteudo?.cidade,r.conteudo?.vaga].some(v=>String(v||'').toLocaleLowerCase('pt-BR').includes(query)));
+ $('adminCount').textContent=`${visible.length} exibidos de ${adminRows.length} carregados${adminHasMore?' (há mais currículos)':''}.`;
+ if(!visible.length){const p=document.createElement('p');p.textContent=query?'Nenhum currículo encontrado entre os registros carregados.':'Nenhum currículo encontrado.';list.append(p);}
+ for(const r of visible){
+  const card=document.createElement('div');card.className='saved-card';
+  const name=document.createElement('h3');name.textContent=r.nome||'Currículo sem nome';
+  const meta=document.createElement('small');meta.textContent=[r.conteudo?.email,r.conteudo?.cidade,new Date(r.updated_at||Date.now()).toLocaleDateString('pt-BR')].filter(Boolean).join(' • ');
+  const actions=document.createElement('div');actions.className='actions';
+  const open=document.createElement('button');open.type='button';open.textContent='Visualizar';open.onclick=()=>{adminViewing=r.id;renderResume($('adminMount'),r.conteudo||{});$('adminViewerTitle').textContent=r.nome||'Currículo';$('adminViewer').hidden=false;document.getElementById('adminViewer').scrollIntoView({behavior:'smooth'});};
+  const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='Excluir';del.onclick=()=>deleteAdminResume(r);
+  actions.append(open,del);card.append(name,meta,actions);list.append(card);
+ }
+}
+async function deleteAdminResume(r){
+ if(!isAdmin||!confirm(`Excluir DEFINITIVAMENTE o currículo de ${r.nome||'nome não informado'}? Essa ação não poderá ser desfeita.`))return;
+ const {error}=await client.from('curriculos').delete().eq('id',r.id);
+ if(error){msg('adminMessage','Erro ao excluir: '+error.message);return;}
+ if(adminViewing===r.id){$('adminViewer').hidden=true;adminViewing=null;}
+ adminRows=adminRows.filter(x=>x.id!==r.id);renderAdminList();msg('adminMessage','Currículo excluído.');
+}
+
 client.auth.onAuthStateChange((event,session)=>{
  if(event==='PASSWORD_RECOVERY'){setTimeout(async()=>{const pass=prompt('Digite uma nova senha com pelo menos 6 caracteres:');if(pass===null)return;if(pass.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');const {error}=await client.auth.updateUser({password:pass});alert(error?error.message:'Senha atualizada com sucesso.');},0);}
- const previous=user?.id;user=session?.user||null;authScreen();if(user&&previous!==user.id){resetEditor();navigate('criar');setTimeout(()=>refresh(),0);}else if(user){renderResume($('previewMount'),values());}
+ const previous=user?.id;user=session?.user||null;if(previous!==user?.id){isAdmin=false;adminRows=[];$('navAdmin').hidden=true;}authScreen();if(user&&previous!==user.id){resetEditor();navigate('criar');setTimeout(()=>refresh(),0);}else if(user){renderResume($('previewMount'),values());}
 });
 resetEditor();const {data:{user:verifiedUser}}=await client.auth.getUser();user=verifiedUser||null;authScreen();if(user){resetEditor();navigate('criar');await refresh();}
