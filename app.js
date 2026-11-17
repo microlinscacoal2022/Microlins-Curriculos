@@ -10,6 +10,22 @@ let selectedId = null;
 let cache = [];
 const message = (id, text) => { el(id).textContent = text; };
 const authPanel = el('authpanel');
+// As duas áreas usam o mesmo endereço, mas exibem páginas independentes.
+const pages = ['criar','salvos'];
+function navigate(page, options={}) {
+  const target = pages.includes(page) ? page : 'criar';
+  document.querySelectorAll('[data-view]').forEach(section => { section.hidden = section.dataset.view !== target; });
+  document.querySelectorAll('[data-page]').forEach(button => {
+    const active = button.dataset.page === target;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-current', active ? 'page' : 'false');
+  });
+  if (location.hash !== '#' + target) history.replaceState(null,'','#' + target);
+  if (!options.noScroll) window.scrollTo({top:0,behavior:'instant'});
+}
+document.querySelectorAll('[data-page]').forEach(button => button.addEventListener('click', () => navigate(button.dataset.page)));
+window.addEventListener('hashchange', () => navigate(location.hash.replace('#','')));
+navigate(location.hash.replace('#','') || 'criar', {noScroll:true});
 el('loginToggle').onclick = () => authPanel.classList.toggle('hide');
 function values() { return Object.fromEntries(fields.map(k => [k, el(k).value])); }
 function resetEditor() { el('form').reset(); selectedId = null; el('savedResumes').value = ''; window.atualizar?.(); }
@@ -63,13 +79,13 @@ el('saveCloud').onclick = async () => {
   const {data:result,error} = await query;
   if(error) return message('cloudmessage',`Não foi possível salvar: ${error.message}`);
   resetEditor(); await refresh(); message('cloudmessage','Currículo salvo com sucesso! O formulário foi limpo. Para consultar, selecione-o em Meus currículos salvos.');
-  el('meus-curriculos').scrollIntoView({behavior:'smooth',block:'start'});
+  navigate('salvos');
 };
 el('savedResumes').onchange = () => { /* Escolher um item não altera o currículo em edição. */ };
 el('loadResume').onclick = () => {
   const item = cache.find(x => x.id === el('savedResumes').value);
   if(!item) return message('cloudmessage','Selecione um currículo.');
-  selectedId=item.id; populate(item.conteudo); message('cloudmessage','Currículo carregado.');
+  selectedId=item.id; populate(item.conteudo); message('cloudmessage','Currículo carregado na página Criar currículo.'); navigate('criar');
 };
 el('deleteResume').onclick = async () => {
   const id=el('savedResumes').value;
@@ -78,7 +94,7 @@ el('deleteResume').onclick = async () => {
   if(error) return message('cloudmessage',`Não foi possível excluir: ${error.message}`);
   if(selectedId===id) resetEditor(); await refresh(); message('cloudmessage','Currículo excluído.');
 };
-el('newResume').onclick = () => { resetEditor(); message('cloudmessage','Formulário limpo para um novo currículo.'); el('nome').focus(); };
+el('newResume').onclick = () => { resetEditor(); message('cloudmessage','Formulário limpo para um novo currículo.'); navigate('criar'); el('nome').focus(); };
 el('limpar').addEventListener('click', () => { selectedId=null; if (el('savedResumes')) el('savedResumes').value=''; });
 // Evita que o navegador restaure os dados de um aluno ao abrir/recarregar a página.
 resetEditor();
