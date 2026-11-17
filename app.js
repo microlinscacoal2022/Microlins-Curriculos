@@ -3,6 +3,18 @@ import {SUPABASE_URL,SUPABASE_ANON_KEY} from './config.js';
 const $=id=>document.getElementById(id);
 const keys=['nome','cidade','telefone','email','idade','vaga','situacao','formacao','periodo','instituicao','objetivo','experiencia','cursos','habilidades','perfil','extras'];
 const client=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+// Estilos do quadro DISC para os seis modelos, sem alterar seus temas de cores.
+const discCss=document.createElement('style');
+discCss.textContent=`
+.disc-all-scores{display:grid;gap:9px;margin:12px 0 13px}
+.disc-score-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;font-weight:600;margin-bottom:4px}
+.disc-score-heading strong{font-variant-numeric:tabular-nums;font-size:12px}
+.disc-score-track{height:6px;background:rgba(128,128,128,.20);border-radius:30px;overflow:hidden}
+.disc-score-fill{height:100%;background:var(--accent,#0e5792);border-radius:30px}
+@media print{.disc-score-line{break-inside:avoid}.disc-score-track,.disc-score-fill{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+`;
+document.head.append(discCss);
+
 let user=null, rows=[], editingId=null, viewingId=null, photoData='',selectedTemplate='azul',discResult=null;
 const msg=(id,s)=>{$(id).textContent=s;};
 const displayName=u=>{const name=u?.user_metadata?.full_name||u?.user_metadata?.name;return String(name||u?.email?.split('@')[0]||'Usuário').trim().slice(0,80);};
@@ -85,11 +97,23 @@ function renderResume(container,raw){
     };
     const section=document.createElement('section');section.className='disc-result-box';
     const title=document.createElement('h3');title.textContent='PERFIL COMPORTAMENTAL — DISC';section.append(title);
+    const results=document.createElement('div');results.className='disc-all-scores';
+    for(const key of ['D','I','S','C']){
+      const line=document.createElement('div');line.className='disc-score-line';
+      const heading=document.createElement('div');heading.className='disc-score-heading';
+      const name=document.createElement('span');name.textContent=`${key} — ${labels[key]}`;
+      const percent=document.createElement('strong');percent.textContent=`${Math.round(scores[key])}%`;
+      heading.append(name,percent);
+      const track=document.createElement('div');track.className='disc-score-track';
+      const fill=document.createElement('div');fill.className='disc-score-fill';fill.style.width=`${scores[key]}%`;
+      track.append(fill);line.append(heading,track);results.append(line);
+    }
+    section.append(results);
     const summary=document.createElement('p');
-    summary.textContent=(winners.length===1?'Tendência predominante: ':'Tendências predominantes (empate): ')+winners.map(k=>`${labels[k]} — ${scores[k]}%`).join(' e ');
+    summary.textContent=(winners.length===1?'Tendência predominante: ':'Tendências predominantes (empate): ')+winners.map(k=>labels[k]).join(' e ');
     section.append(summary);
     const description=document.createElement('p');description.textContent=winners.map(k=>brief[k]).join(' ');section.append(description);
-    const note=document.createElement('small');note.textContent='Resultado de autoavaliação educativa, não de avaliação psicológica.';section.append(note);
+    const note=document.createElement('small');note.textContent='Percentuais independentes por dimensão; não precisam somar 100%. Autoavaliação educativa, não avaliação psicológica.';section.append(note);
     const body=root.querySelector('.resume-body');body.append(section);
   }
 }

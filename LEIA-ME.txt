@@ -1,1 +1,1 @@
-Atualização DISC: exibe a porcentagem real do perfil predominante no currículo, junto da descrição resumida. Em empate, exibe as tendências empatadas e as porcentagens. Substitua somente app.js no GitHub; preserve config.js e banco de dados.
+Substitua apenas app.js no GitHub (raiz do repositório Microlins-Curriculos). Mantém os 6 temas, os resultados DISC obrigatórios e os currículos existentes. Quatro porcentagens independentes, perfil predominante e descrição breve. Não altere config.js.
