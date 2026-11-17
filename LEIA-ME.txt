@@ -1,1 +1,1 @@
-ATUALIZAÇÃO: experiência profissional passa a ter opção vazia. Os campos sem dados, incluindo foto, telefone, e-mail, escolaridade, objetivo e experiências, não aparecem no currículo final. Substitua apenas index.html e app.js no GitHub. Preserve config.js e banco Supabase.
+Envie para a raiz do GitHub os arquivos index.html, app.js, teste-disc.html e logo-microlins.png. Preserve config.js e supabase.sql. O teste DISC é opcional; resultado só entra no currículo se o usuário selecionar a opção.
