@@ -15,11 +15,31 @@ discCss.textContent=`
 `;
 document.head.append(discCss);
 
-let user=null, rows=[], editingId=null, viewingId=null, photoData='',selectedTemplate='azul',discResult=null;
+let user=null, rows=[], editingId=null, viewingId=null, photoData='',selectedTemplate='azul',discResult=null,accountDisc=null,discSaving=false;
 const msg=(id,s)=>{$(id).textContent=s;};
 const displayName=u=>{const name=u?.user_metadata?.full_name||u?.user_metadata?.name;return String(name||u?.email?.split('@')[0]||'Usuário').trim().slice(0,80);};
 const updateUsername=()=>{$('sidebarUsername').textContent=displayName(user);};
-const values=()=>({...Object.fromEntries(keys.map(k=>[k,$(k).value.trim()])),foto:photoData,modelo:selectedTemplate,disc:discResult});
+const isValidDisc=r=>!!(r?.scores&&['D','I','S','C'].every(k=>Number.isFinite(r.scores[k])&&r.scores[k]>=0&&r.scores[k]<=100));
+const accountDiscFrom=u=>isValidDisc(u?.user_metadata?.disc_result)?u.user_metadata.disc_result:null;
+const values=()=>({...Object.fromEntries(keys.map(k=>[k,$(k).value.trim()])),foto:photoData,modelo:selectedTemplate,disc:accountDisc});
+function syncAccountDisc(){accountDisc=accountDiscFrom(user);discResult=accountDisc;updateDiscStatus();updateDiscPage();}
+function updateDiscPage(){
+ const complete=isValidDisc(accountDisc);
+ const panel=$('discCompleted');const frame=$('discFrame');
+ if(panel)panel.hidden=!complete;
+ if(frame)frame.hidden=complete;
+ if(complete){
+  const names={D:'Dominância',I:'Influência',S:'Estabilidade',C:'Conformidade'};
+  const score=accountDisc.scores, highest=Math.max(...Object.values(score));
+  const tops=Object.keys(names).filter(k=>score[k]===highest).map(k=>names[k]);
+  $('discCompletedSummary').textContent='Perfil predominante: '+tops.join(' e ')+'.';
+  $('discCompletedScores').textContent=Object.entries(names).map(([k,n])=>`${n}: ${Math.round(score[k])}%`).join(' • ');
+  const stamp=accountDisc.completedAt?new Date(accountDisc.completedAt):null;
+  $('discCompletedDate').textContent=stamp&&!Number.isNaN(stamp.getTime())?'Realizado em '+stamp.toLocaleDateString('pt-BR')+'. Resultado salvo nesta conta.':'Resultado salvo nesta conta.';
+ }
+ const btn=$('goDisc');if(btn){btn.hidden=complete;btn.disabled=complete;}
+}
+
 function fallbackObjective(d){return d.situacao==='experiencia'?`Busco uma oportunidade${d.vaga?' na área de '+d.vaga:''} para aplicar meus conhecimentos, aprender e contribuir com a equipe.`:`Busco minha primeira oportunidade${d.vaga?' na área de '+d.vaga:''} para desenvolver minhas habilidades, aprender e contribuir com dedicação e responsabilidade.`;}
 function cleanData(raw={}) {
   return {...raw};
@@ -117,9 +137,9 @@ function renderResume(container,raw){
     const body=root.querySelector('.resume-body');body.append(section);
   }
 }
-function resetEditor(){editingId=null;photoData='';selectedTemplate='azul';discResult=null;updateDiscStatus();$('form').reset();$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';$('editBanner').hidden=true;renderResume($('previewMount'),values());msg('editorMessage','');}
-function populate(data){const d=cleanData(data);selectedTemplate=d.modelo||'azul';discResult=d.disc||null;updateDiscStatus();for(const k of keys)$(k).value=d[k]??'';photoData=d.foto||'';$('photoStatus').textContent=photoData?'Foto do currículo carregada':'Nenhuma foto selecionada';$('removePhoto').hidden=!photoData;renderResume($('previewMount'),values());}
-function hasDisc(){return !!(discResult?.scores && ['D','I','S','C'].every(k=>Number.isFinite(discResult.scores[k])&&discResult.scores[k]>=0&&discResult.scores[k]<=100));}
+function resetEditor(){editingId=null;photoData='';selectedTemplate='azul';discResult=accountDisc;updateDiscStatus();$('form').reset();$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';$('editBanner').hidden=true;renderResume($('previewMount'),values());msg('editorMessage','');}
+function populate(data){const d=cleanData(data);selectedTemplate=d.modelo||'azul';discResult=accountDisc;updateDiscStatus();for(const k of keys)$(k).value=d[k]??'';photoData=d.foto||'';$('photoStatus').textContent=photoData?'Foto do currículo carregada':'Nenhuma foto selecionada';$('removePhoto').hidden=!photoData;renderResume($('previewMount'),values());}
+function hasDisc(){return isValidDisc(accountDisc);}
 function requireDisc(messageId='editorMessage'){
  if(hasDisc())return true;
  msg(messageId,'Conclua primeiro o teste DISC obrigatório (24 perguntas).');
@@ -131,33 +151,57 @@ function navigate(page){
   page='disc';
  }
  const valid=['criar','disc','modelos','visualizar','salvos'].includes(page)?page:'criar';$('pageCriar').hidden=valid!=='criar';$('pageDisc').hidden=valid!=='disc';$('pageModelos').hidden=valid!=='modelos';$('pageVisualizar').hidden=valid!=='visualizar';$('pageSalvos').hidden=valid!=='salvos';document.querySelectorAll('[data-page]').forEach(b=>{b.classList.toggle('active',b.dataset.page===valid);b.setAttribute('aria-current',b.dataset.page===valid?'page':'false');});if(location.hash!=='#'+valid)history.replaceState(null,'','#'+valid);window.scrollTo(0,0);}
-function authScreen(){const logged=!!user;$('authScreen').hidden=logged;$('workspace').hidden=!logged;if(logged){msg('authstatus',`Conectado: ${user.email}`);updateUsername();}else{$('authPassword').value='';resetEditor();rows=[];viewingId=null;$('savedViewer').hidden=true;}}
+function authScreen(){const logged=!!user;$('authScreen').hidden=logged;$('workspace').hidden=!logged;if(logged){msg('authstatus',`Conectado: ${user.email}`);updateUsername();syncAccountDisc();}else{$('authPassword').value='';accountDisc=null;discResult=null;resetEditor();updateDiscPage();rows=[];viewingId=null;$('savedViewer').hidden=true;}}
 function selectedCard(row){const card=document.createElement('div');card.className='saved-card';const title=document.createElement('h3');title.textContent=row.nome||'Currículo';const date=document.createElement('small');date.textContent=`Salvo em ${new Date(row.updated_at||Date.now()).toLocaleDateString('pt-BR')}`;const btn=document.createElement('div');btn.className='actions';const open=document.createElement('button');open.textContent='Visualizar';open.onclick=()=>showSaved(row.id);const edit=document.createElement('button');edit.className='light';edit.textContent='Editar';edit.onclick=()=>editSaved(row.id);const del=document.createElement('button');del.className='danger';del.textContent='Excluir';del.onclick=()=>deleteSaved(row.id);btn.append(open,edit,del);card.append(title,date,btn);return card;}
 function renderList(){const list=$('savedList');list.replaceChildren();if(!rows.length){const p=document.createElement('p');p.textContent='Você ainda não tem currículos salvos. Clique em Criar currículo para começar.';list.append(p);}else rows.forEach(r=>list.append(selectedCard(r)));}
-async function refresh(){if(!user)return;const target=user.id;const {data,error}=await client.from('curriculos').select('id,nome,conteudo,updated_at').eq('usuario_id',target).order('updated_at',{ascending:false});if(target!==user?.id)return;if(error){msg('cloudmessage','Erro ao carregar currículos: '+error.message);return;}rows=data||[];renderList();}
+async function refresh(){
+ if(!user)return;
+ const target=user.id;
+ const {data,error}=await client.from('curriculos').select('id,nome,conteudo,updated_at').eq('usuario_id',target).order('updated_at',{ascending:false});
+ if(target!==user?.id)return;
+ if(error){msg('cloudmessage','Erro ao carregar currículos: '+error.message);return;}
+ rows=data||[];renderList();
+ // Recupera resultados de currículos antigos que já tinham DISC e os associa à conta uma vez.
+ if(!accountDisc){
+  const old=rows.find(row=>isValidDisc(row.conteudo?.disc))?.conteudo.disc;
+  if(old){
+   const {data:updated,error:updateError}=await client.auth.updateUser({data:{disc_result:old}});
+   if(target!==user?.id)return;
+   if(updateError){msg('cloudmessage','Currículos carregados, mas não foi possível associar o DISC antigo à conta: '+updateError.message);return;}
+   user=updated.user||user;syncAccountDisc();renderResume($('previewMount'),values());
+  }
+ }
+}
 function showSaved(id){const row=rows.find(r=>r.id===id);if(!row)return;viewingId=id;renderResume($('savedMount'),row.conteudo||{});$('savedViewerTitle').textContent=row.nome||'Currículo salvo';$('savedViewer').hidden=false;navigate('salvos');$('savedViewer').scrollIntoView({behavior:'smooth',block:'start'});}
 function editSaved(id){const row=rows.find(r=>r.id===id);if(!row)return;resetEditor();editingId=id;populate(row.conteudo||{});$('editBanner').hidden=false;navigate('criar');}
 async function deleteSaved(id){if(!confirm('Excluir este currículo da sua conta? Esta ação não pode ser desfeita.'))return;const {error}=await client.from('curriculos').delete().eq('id',id).eq('usuario_id',user.id);if(error)return msg('cloudmessage','Erro ao excluir: '+error.message);if(viewingId===id){viewingId=null;$('savedViewer').hidden=true;}if(editingId===id)resetEditor();await refresh();msg('cloudmessage','Currículo excluído.');}
 async function submitAuth(method){const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password)return msg('authmessage','Preencha e-mail e senha.');if(password.length<6)return msg('authmessage','A senha precisa ter pelo menos 6 caracteres.');const btn=$(method==='signUp'?'signup':'signin');btn.disabled=true;try{const name=$('authName').value.trim();if(method==='signUp' && !name)return msg('authmessage','Informe seu nome para criar a conta.');const {data,error}=method==='signUp'?await client.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:location.origin}}):await client.auth.signInWithPassword({email,password});if(error)throw error;if(method==='signUp' && !data.session)msg('authmessage','Cadastro solicitado. Confirme seu e-mail antes de entrar.');else msg('authmessage','Acesso realizado.');}catch(error){msg('authmessage',error.message||'Falha de autenticação.');}finally{btn.disabled=false;}}
 function updateDiscStatus(){
- const status=$('discStatus');
- if(discResult?.scores){
-   const names={D:'Dominância',I:'Influência',S:'Estabilidade',C:'Conformidade'};
-   const max=Math.max(...Object.values(discResult.scores));
-   const tops=Object.keys(names).filter(k=>discResult.scores[k]===max).map(k=>names[k]).join(' e ');
-   status.textContent='Teste concluído. Resultado incluído automaticamente: '+Object.keys(names).filter(k=>discResult.scores[k]===max).map(k=>`${names[k]} (${discResult.scores[k]}%)`).join(' e ')+'.';
- }else{status.textContent='Teste obrigatório pendente. Responda às 24 perguntas para escolher o modelo e concluir o currículo.';}
+ const status=$('discStatus');if(!status)return;
+ if(isValidDisc(accountDisc)){
+  const names={D:'Dominância',I:'Influência',S:'Estabilidade',C:'Conformidade'};
+  const top=Math.max(...Object.values(accountDisc.scores));
+  const winners=Object.keys(names).filter(k=>accountDisc.scores[k]===top);
+  status.textContent='✓ DISC concluído e salvo na sua conta. Perfil predominante: '+winners.map(k=>`${names[k]} (${accountDisc.scores[k]}%)`).join(' e ')+'. O resultado será usado automaticamente em todos os currículos.';
+ }else status.textContent='Teste obrigatório pendente. Responda uma vez às 24 perguntas. O resultado ficará salvo na sua conta para os próximos currículos.';
 }
-
-window.addEventListener('message',event=>{
+window.addEventListener('message',async event=>{
  if(event.origin!==location.origin||event.source!==$('discFrame').contentWindow)return;
- const data=event.data;
- if(data?.type!=='microlins:disc-result')return;
- const result=data.result;
- if(!result||!result.scores||!['D','I','S','C'].every(k=>Number.isFinite(result.scores[k])&&result.scores[k]>=0&&result.scores[k]<=100))return;
- discResult={scores:{D:result.scores.D,I:result.scores.I,S:result.scores.S,C:result.scores.C},completedAt:result.completedAt||new Date().toISOString(),version:result.version||'educativo-1'};
- updateDiscStatus();
- msg('discPageStatus','Teste concluído. O perfil predominante foi incluído automaticamente no currículo.');
+ if(event.data?.type!=='microlins:disc-result'||!user||discSaving||isValidDisc(accountDisc))return;
+ const result=event.data.result;
+ if(!isValidDisc(result))return;
+ discSaving=true;
+ const owner=user.id;
+ const candidate={scores:{D:result.scores.D,I:result.scores.I,S:result.scores.S,C:result.scores.C},completedAt:result.completedAt||new Date().toISOString(),version:result.version||'educativo-1'};
+ msg('discPageStatus','Salvando seu resultado na conta...');
+ const {data,error}=await client.auth.updateUser({data:{disc_result:candidate}});
+ discSaving=false;
+ if(owner!==user?.id)return;
+ if(error){msg('discPageStatus','Não foi possível salvar o DISC: '+error.message+'. Reabra a página e conclua o teste novamente, se necessário.');return;}
+ user=data.user||user;
+ syncAccountDisc();
+ renderResume($('previewMount'),values());
+ msg('discPageStatus','Resultado salvo no Supabase. Você não precisará repetir o teste nesta conta.');
  navigate('criar');
 });
 $('editUsername').onclick=async()=>{if(!user)return;const name=prompt('Qual nome deve aparecer no menu?',displayName(user));if(name===null)return;const cleaned=name.trim().slice(0,80);if(!cleaned)return alert('Informe um nome válido.');const {data,error}=await client.auth.updateUser({data:{full_name:cleaned}});if(error)return alert('Não foi possível atualizar: '+error.message);user=data.user||user;updateUsername();};
@@ -191,6 +235,6 @@ $('printChosen').onclick=()=>{if(!requireDisc())return;renderChosen();printResum
 
 client.auth.onAuthStateChange((event,session)=>{
  if(event==='PASSWORD_RECOVERY'){setTimeout(async()=>{const pass=prompt('Digite uma nova senha com pelo menos 6 caracteres:');if(pass===null)return;if(pass.length<6)return alert('A senha precisa ter pelo menos 6 caracteres.');const {error}=await client.auth.updateUser({password:pass});alert(error?error.message:'Senha atualizada com sucesso.');},0);}
- const previous=user?.id;user=session?.user||null;authScreen();if(user&&previous!==user.id){resetEditor();navigate('criar');setTimeout(()=>refresh(),0);}
+ const previous=user?.id;user=session?.user||null;authScreen();if(user&&previous!==user.id){resetEditor();navigate('criar');setTimeout(()=>refresh(),0);}else if(user){renderResume($('previewMount'),values());}
 });
-resetEditor();const {data:{session}}=await client.auth.getSession();user=session?.user||null;authScreen();if(user){navigate('criar');await refresh();}
+resetEditor();const {data:{user:verifiedUser}}=await client.auth.getUser();user=verifiedUser||null;authScreen();if(user){resetEditor();navigate('criar');await refresh();}

@@ -1,1 +1,8 @@
-Substitua apenas app.js no GitHub (raiz do repositório Microlins-Curriculos). Mantém os 6 temas, os resultados DISC obrigatórios e os currículos existentes. Quatro porcentagens independentes, perfil predominante e descrição breve. Não altere config.js.
+ATUALIZAÇÃO DISC UMA VEZ POR CONTA — 17/11/2026
+
+Envie para a raiz do repositório GitHub somente app.js e index.html.
+Não altere config.js, Supabase SQL, logo nem teste-disc.html.
+O resultado é salvo no metadata do usuário autenticado via Supabase Auth updateUser, sob a chave disc_result.
+Depois do login, o sistema recupera o resultado da conta. Currículos salvos anteriormente com DISC podem migrar seu resultado para a conta.
+Teste em conta existente: concluir uma vez, sair e entrar, iniciar novo currículo, verificar as quatro porcentagens no PDF.
+Observação: esta é a persistência funcional no perfil de usuário; metadata é editável pelo usuário autenticado, portanto não substitui controles de integridade em backend.
