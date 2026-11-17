@@ -1,1 +1,1 @@
-ATUALIZAÇÃO: página de preenchimento sem prévia. Envie index.html e app.js para a raiz do GitHub e mantenha o config.js original. O currículo será visualizado após Escolher modelo.
+ATUALIZAÇÃO: experiência profissional passa a ter opção vazia. Os campos sem dados, incluindo foto, telefone, e-mail, escolaridade, objetivo e experiências, não aparecem no currículo final. Substitua apenas index.html e app.js no GitHub. Preserve config.js e banco Supabase.

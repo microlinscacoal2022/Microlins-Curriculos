@@ -9,35 +9,69 @@ const displayName=u=>{const name=u?.user_metadata?.full_name||u?.user_metadata?.
 const updateUsername=()=>{$('sidebarUsername').textContent=displayName(user);};
 const values=()=>({...Object.fromEntries(keys.map(k=>[k,$(k).value.trim()])),foto:photoData,modelo:selectedTemplate});
 function fallbackObjective(d){return d.situacao==='experiencia'?`Busco uma oportunidade${d.vaga?' na área de '+d.vaga:''} para aplicar meus conhecimentos, aprender e contribuir com a equipe.`:`Busco minha primeira oportunidade${d.vaga?' na área de '+d.vaga:''} para desenvolver minhas habilidades, aprender e contribuir com dedicação e responsabilidade.`;}
-function cleanData(raw={}) {const d={...raw}; // Compatibilidade com currículos salvos em versões anteriores.
-  if(!d.perfil && d.extras) d.perfil=d.extras;
-  return d;
+function cleanData(raw={}) {
+  return {...raw};
 }
 function renderResume(container,raw){
-  const d=cleanData(raw);container.replaceChildren($('resumeTemplate').content.cloneNode(true));const root=container.querySelector('.resume');root.dataset.template=d.modelo||selectedTemplate;
-  const set=(key,text)=>{const node=root.querySelector(`[data-r="${key}"]`);if(node)node.textContent=text??'';};
-  set('nome',(d.nome||'SEU NOME').toLocaleUpperCase('pt-BR'));
-  set('vaga',(d.vaga||'CARGO OU VAGA DESEJADA').toLocaleUpperCase('pt-BR'));
-  const topo=[d.cidade,d.idade&&`${d.idade} anos`,d.situacao==='experiencia'?'Com experiência':'Primeiro emprego'].filter(Boolean).join(' • ');
-  set('subtitulo',topo||'Currículo profissional');
-  for(const key of ['cidade','telefone','email'])set(key,d[key]||'Não informado');
-  set('idade',d.idade?`${d.idade} anos`:'');
-  const formation=[d.formacao,d.periodo&&`Período: ${d.periodo}`,d.instituicao&&`Instituição: ${d.instituicao}`].filter(Boolean).join('\n');
-  set('formacao',formation||'Não informado');
-  set('objetivo',d.objetivo||fallbackObjective(d));
-  set('experiencia',d.experiencia||(d.situacao==='experiencia'?'Não informada.':'Ainda não possuo experiência profissional, mas tenho disposição para aprender e me desenvolver.'));
-  set('cursos',d.cursos||'');
-  set('habilidades',d.habilidades||'');
-  set('perfil',d.perfil||'');
-  set('extras',d.extras||'');
-  for(const key of ['idade','cursos','habilidades','perfil','extras']){
-    const sec=root.querySelector(`[data-section="${key}"]`);
-    if(sec) sec.hidden=!String(d[key]||'').trim();
+  const d=cleanData(raw);
+  container.replaceChildren($('resumeTemplate').content.cloneNode(true));
+  const root=container.querySelector('.resume');
+  root.dataset.template=d.modelo||selectedTemplate;
+  const field=k=>String(d[k]??'').trim();
+  const set=(key,text)=>{
+    const node=root.querySelector(`[data-r="${key}"]`);
+    if(node) node.textContent=text??'';
+  };
+  const setSection=(key,text)=>{
+    set(key,text);
+    const el=root.querySelector(`[data-section="${key}"]`);
+    if(el)el.hidden=!String(text||'').trim();
+  };
+  set('nome',field('nome').toLocaleUpperCase('pt-BR'));
+  const role=root.querySelector('.role-pill');
+  set('vaga',field('vaga').toLocaleUpperCase('pt-BR'));
+  role.hidden=!field('vaga');
+  const topo=[
+    field('cidade'),
+    field('idade')&&`${field('idade')} anos`,
+    field('situacao')==='experiencia'?'Com experiência':field('situacao')==='primeiro'?'Primeiro emprego':''
+  ].filter(Boolean).join(' • ');
+  set('subtitulo',topo);
+  root.querySelector('.resume-topline').hidden=!topo;
+  for(const key of ['cidade','telefone','email']){
+    set(key,field(key));
+    const node=root.querySelector(`[data-r="${key}"]`);
+    if(node)node.closest('.contact-item').hidden=!field(key);
   }
-  const img=root.querySelector('img.resume-photo'),placeholder=root.querySelector('.photo-placeholder');
-  if(typeof d.foto==='string' && /^data:image\/(jpeg|png|webp);base64,/.test(d.foto)){
-    img.src=d.foto;img.hidden=false;placeholder.hidden=true;
-  }else{img.removeAttribute('src');img.hidden=true;placeholder.hidden=false;}
+  setSection('idade',field('idade')?`${field('idade')} anos`:'');
+  const formation=[
+    field('formacao'),
+    field('periodo')&&`Período: ${field('periodo')}`,
+    field('instituicao')&&`Instituição: ${field('instituicao')}`
+  ].filter(Boolean).join('\n');
+  setSection('formacao',formation);
+  setSection('objetivo',field('objetivo'));
+  setSection('experiencia',field('experiencia'));
+  setSection('cursos',field('cursos'));
+  setSection('habilidades',field('habilidades'));
+  setSection('perfil',field('perfil'));
+  setSection('extras',field('extras'));
+  const contacts=root.querySelector('.contact-list');
+  const contactSection=contacts?.closest('.mod-block');
+  if(contactSection)contactSection.hidden=!Array.from(contacts.querySelectorAll('.contact-item')).some(el=>!el.hidden);
+  const img=root.querySelector('img.resume-photo');
+  const photoSlot=root.querySelector('.photo-slot');
+  const photoValid=typeof d.foto==='string'&&/^data:image\/(jpeg|png|webp);base64,/.test(d.foto);
+  photoSlot.hidden=!photoValid;
+  if(photoValid){
+    img.src=d.foto;
+    img.hidden=false;
+  }else{
+    img.removeAttribute('src');
+    img.hidden=true;
+  }
+  const placeholder=root.querySelector('.photo-placeholder');
+  if(placeholder)placeholder.hidden=true;
 }
 function resetEditor(){editingId=null;photoData='';selectedTemplate='azul';$('form').reset();$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';$('editBanner').hidden=true;renderResume($('previewMount'),values());msg('editorMessage','');}
 function populate(data){const d=cleanData(data);selectedTemplate=d.modelo||'azul';for(const k of keys)$(k).value=d[k]??'';photoData=d.foto||'';$('photoStatus').textContent=photoData?'Foto do currículo carregada':'Nenhuma foto selecionada';$('removePhoto').hidden=!photoData;renderResume($('previewMount'),values());}
