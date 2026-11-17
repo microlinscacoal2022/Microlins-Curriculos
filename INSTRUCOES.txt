@@ -1,13 +1,1 @@
-ATUALIZAÇÃO - MEU CURRÍCULO PROFISSIONAL
-
-O que mudou:
-1. O preenchimento não mostra mais a prévia do currículo.
-2. A galeria mostra os seis modelos com as informações preenchidas, e não desenhos genéricos.
-3. A escolha do modelo acontece antes da visualização, do PDF e do salvamento.
-4. Currículos salvos permanecem numa página independente.
-
-No GitHub: Add file > Upload files > envie index.html, app.js e logo-microlins.png.
-Confirme Commit changes. Não substitua config.js nem supabase.sql.
-Após o novo deploy no Render, use Ctrl+F5.
-
-Segurança: antes de abrir o cadastro a todos os alunos, reative a confirmação de e-mail e configure um SMTP válido.
+Atualização do gerador: 6 modelos selecionáveis depois do preenchimento. Envie index.html, app.js e logo-microlins.png ao GitHub, sem alterar config.js e supabase.sql. A publicação do Render deve terminar antes do teste. Modelos são recriações editáveis inspiradas nas referências, não os PDFs como fundos.

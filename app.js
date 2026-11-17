@@ -39,8 +39,8 @@ function renderResume(container,raw){
     img.src=d.foto;img.hidden=false;placeholder.hidden=true;
   }else{img.removeAttribute('src');img.hidden=true;placeholder.hidden=false;}
 }
-function resetEditor(){editingId=null;photoData='';selectedTemplate='azul';$('form').reset();$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';$('editBanner').hidden=true;msg('editorMessage','');}
-function populate(data){const d=cleanData(data);selectedTemplate=d.modelo||'azul';for(const k of keys)$(k).value=d[k]??'';photoData=d.foto||'';$('photoStatus').textContent=photoData?'Foto do currículo carregada':'Nenhuma foto selecionada';$('removePhoto').hidden=!photoData;}
+function resetEditor(){editingId=null;photoData='';selectedTemplate='azul';$('form').reset();$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';$('editBanner').hidden=true;renderResume($('previewMount'),values());msg('editorMessage','');}
+function populate(data){const d=cleanData(data);selectedTemplate=d.modelo||'azul';for(const k of keys)$(k).value=d[k]??'';photoData=d.foto||'';$('photoStatus').textContent=photoData?'Foto do currículo carregada':'Nenhuma foto selecionada';$('removePhoto').hidden=!photoData;renderResume($('previewMount'),values());}
 function navigate(page){const valid=['criar','modelos','visualizar','salvos'].includes(page)?page:'criar';$('pageCriar').hidden=valid!=='criar';$('pageModelos').hidden=valid!=='modelos';$('pageVisualizar').hidden=valid!=='visualizar';$('pageSalvos').hidden=valid!=='salvos';document.querySelectorAll('[data-page]').forEach(b=>{b.classList.toggle('active',b.dataset.page===valid);b.setAttribute('aria-current',b.dataset.page===valid?'page':'false');});if(location.hash!=='#'+valid)history.replaceState(null,'','#'+valid);window.scrollTo(0,0);}
 function authScreen(){const logged=!!user;$('authScreen').hidden=logged;$('workspace').hidden=!logged;if(logged){msg('authstatus',`Conectado: ${user.email}`);updateUsername();}else{$('authPassword').value='';resetEditor();rows=[];viewingId=null;$('savedViewer').hidden=true;}}
 function selectedCard(row){const card=document.createElement('div');card.className='saved-card';const title=document.createElement('h3');title.textContent=row.nome||'Currículo';const date=document.createElement('small');date.textContent=`Salvo em ${new Date(row.updated_at||Date.now()).toLocaleDateString('pt-BR')}`;const btn=document.createElement('div');btn.className='actions';const open=document.createElement('button');open.textContent='Visualizar';open.onclick=()=>showSaved(row.id);const edit=document.createElement('button');edit.className='light';edit.textContent='Editar';edit.onclick=()=>editSaved(row.id);const del=document.createElement('button');del.className='danger';del.textContent='Excluir';del.onclick=()=>deleteSaved(row.id);btn.append(open,edit,del);card.append(title,date,btn);return card;}
@@ -55,44 +55,22 @@ $('signin').onclick=()=>submitAuth('signIn');$('signup').onclick=()=>submitAuth(
 $('forgot').onclick=async()=>{const email=$('authEmail').value.trim();if(!email)return msg('authmessage','Informe seu e-mail para recuperar a senha.');const {error}=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin});msg('authmessage',error?error.message:'Se o e-mail estiver cadastrado, você receberá instruções.');};
 $('logout').onclick=async()=>{await client.auth.signOut();user=null;authScreen();history.replaceState(null,'',location.pathname);};
 $('navCriar').onclick=()=>{if(editingId)resetEditor();navigate('criar');};$('navModelos').onclick=()=>{buildGallery();navigate('modelos');};$('navVisualizar').onclick=()=>{renderChosen();navigate('visualizar');};$('navSalvos').onclick=()=>navigate('salvos');$('cancelEdit').onclick=()=>{resetEditor();navigate('criar');};$('newResume').onclick=()=>resetEditor();
-
-$('foto').onchange=async()=>{const file=$('foto').files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type))return msg('editorMessage','Escolha uma foto JPG, PNG ou WEBP.');if(file.size>12*1024*1024)return msg('editorMessage','A foto deve ter até 12 MB.');const read=()=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});try{const src=await read();const im=new Image();im.src=src;await im.decode();const side=460,ratio=Math.min(1,side/Math.max(im.width,im.height));const canvas=document.createElement('canvas');canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);photoData=canvas.toDataURL('image/jpeg',.76);$('photoStatus').textContent='Foto adicionada';$('removePhoto').hidden=false;msg('editorMessage','Foto pronta para salvar.');}catch(e){msg('editorMessage','Não foi possível abrir a foto. Tente outra imagem.');}};
-$('removePhoto').onclick=()=>{photoData='';$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';};
-async function saveCloudResume(){if(!user)return;const d=values();if(!d.nome)return msg('editorMessage','Preencha o nome completo antes de salvar.');const payload={nome:d.nome,conteudo:d,usuario_id:user.id};$('saveChosen').disabled=true;try{const q=editingId?client.from('curriculos').update(payload).eq('id',editingId).eq('usuario_id',user.id):client.from('curriculos').insert(payload);const {error}=await q;if(error)throw error;resetEditor();await refresh();navigate('salvos');msg('cloudmessage','Currículo salvo com sucesso! O formulário de criação já está em branco.');}catch(error){msg('editorMessage','Não foi possível salvar: '+error.message);}finally{$('saveChosen').disabled=false;}}
-$('saveChosen').onclick=saveCloudResume;
-$('closeSaved').onclick=()=>{$('savedViewer').hidden=true;viewingId=null;};$('printSaved').onclick=()=>printResume('savedMount');$('editSaved').onclick=()=>editSaved(viewingId);
-function printResume(id){
+for(const k of keys)$(k).addEventListener('input',()=>renderResume($('previewMount'),values()));
+$('foto').onchange=async()=>{const file=$('foto').files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type))return msg('editorMessage','Escolha uma foto JPG, PNG ou WEBP.');if(file.size>12*1024*1024)return msg('editorMessage','A foto deve ter até 12 MB.');const read=()=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});try{const src=await read();const im=new Image();im.src=src;await im.decode();const side=460,ratio=Math.min(1,side/Math.max(im.width,im.height));const canvas=document.createElement('canvas');canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);photoData=canvas.toDataURL('image/jpeg',.76);$('photoStatus').textContent='Foto adicionada';$('removePhoto').hidden=false;msg('editorMessage','Foto pronta para salvar.');renderResume($('previewMount'),values());}catch(e){msg('editorMessage','Não foi possível abrir a foto. Tente outra imagem.');}};
+$('removePhoto').onclick=()=>{photoData='';$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';renderResume($('previewMount'),values());};
+async function saveCloudResume(){if(!user)return;const d=values();if(!d.nome)return msg('editorMessage','Preencha o nome completo antes de salvar.');const payload={nome:d.nome,conteudo:d,usuario_id:user.id};$('saveCloud').disabled=true;try{const q=editingId?client.from('curriculos').update(payload).eq('id',editingId).eq('usuario_id',user.id):client.from('curriculos').insert(payload);const {error}=await q;if(error)throw error;resetEditor();await refresh();navigate('salvos');msg('cloudmessage','Currículo salvo com sucesso! O formulário de criação já está em branco.');}catch(error){msg('editorMessage','Não foi possível salvar: '+error.message);}finally{$('saveCloud').disabled=false;}}
+$('saveCloud').onclick=saveCloudResume; $('saveChosen').onclick=saveCloudResume;
+$('closeSaved').onclick=()=>{$('savedViewer').hidden=true;viewingId=null;};$('printSaved').onclick=()=>printResume('savedMount');$('pdf').onclick=()=>{if(!$('nome').value.trim())return msg('editorMessage','Preencha o nome antes de gerar o PDF.');printResume('previewMount');};$('editSaved').onclick=()=>editSaved(viewingId);
+function printResume(id){ // Mantém somente o documento selecionado na área de impressão.
  document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));
- const section=id==='savedMount'?'pageSalvos':'pageVisualizar';
- $(section).classList.add('print-target');
- $('savedMount').hidden=id!=='savedMount';
- $('selectedMount').hidden=id!=='selectedMount';
- window.print();
-}
-window.addEventListener('afterprint',()=>{
- $('savedMount').hidden=false;$('selectedMount').hidden=false;
- document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));
-});
+ const section=id==='savedMount'?'pageSalvos':id==='selectedMount'?'pageVisualizar':'pageCriar';$(section).classList.add('print-target');
+ $('previewMount').hidden=id!=='previewMount';$('savedMount').hidden=id!=='savedMount';$('selectedMount').hidden=id!=='selectedMount';
+ window.print();}
+window.addEventListener('afterprint',()=>{$('previewMount').hidden=false;$('savedMount').hidden=false;$('selectedMount').hidden=false;document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));});
 window.addEventListener('hashchange',()=>{if(user)navigate(location.hash.slice(1));});
 
 const templateNames=[['azul','Azul do portal','Identidade azul e branca'],['cinza-laranja','Cinza e laranja','Designer gráfico moderno'],['verde','Verde escuro','Clássico com foto'],['preto-laranja','Preto e laranja','Profissional de destaque'],['preto-branco','Preto e branco','Simples sem foto'],['preto-cinza','Preto e cinza','Jovem aprendiz minimalista']];
-function buildGallery(){
- const gallery=$('modelGallery');gallery.replaceChildren();
- const data=values();
- for(const [id,title,desc] of templateNames){
-  const card=document.createElement('button');card.type='button';
-  card.className='model-choice'+(selectedTemplate===id?' is-selected':'');
-  card.setAttribute('aria-pressed',String(selectedTemplate===id));
-  const thumb=document.createElement('div');thumb.className='live-thumb';
-  // Modelo real com dados do formulário, sem modificar o formulário.
-  renderResume(thumb,{...data,modelo:id});
-  const name=document.createElement('strong');name.textContent=title;
-  const explanation=document.createElement('small');explanation.textContent=desc;
-  card.append(thumb,name,explanation);
-  card.onclick=()=>{selectedTemplate=id;buildGallery();};
-  gallery.append(card);
- }
-}
+function buildGallery(){const gallery=$('modelGallery');gallery.replaceChildren();for(const [id,title,desc] of templateNames){const card=document.createElement('button');card.type='button';card.className='model-choice'+(selectedTemplate===id?' is-selected':'');card.setAttribute('aria-pressed',String(selectedTemplate===id));card.innerHTML=`<div class="thumb" data-template="${id}"><aside><span class="thumb-name">SEU NOME</span><span class="thumb-mini">Primeiro emprego</span><span class="thumb-role">CARGO OU VAGA</span><span class="mock-photo"></span></aside><main><div class="stack"><div class="mini-block"><i></i><i></i><i></i></div><div class="mini-block"><i></i><i></i><i></i></div><div class="mini-block"><i></i><i></i><i></i></div><div class="mini-block"><i></i><i></i><i></i></div></div></main></div><strong>${title}</strong><small>${desc}</small>`;card.onclick=()=>{selectedTemplate=id;buildGallery();};gallery.append(card);}}
 function renderChosen(){const chosen=templateNames.find(t=>t[0]===selectedTemplate);$('chosenModelName').textContent=chosen?.[1]||'Modelo';renderResume($('selectedMount'),values());}
 $('goModels').onclick=()=>{if(!$('nome').value.trim())return msg('editorMessage','Preencha o nome antes de escolher o modelo.');buildGallery();navigate('modelos');};
 $('previewChosen').onclick=()=>{renderChosen();navigate('visualizar');};
