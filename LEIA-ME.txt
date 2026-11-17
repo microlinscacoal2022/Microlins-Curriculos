@@ -1,1 +1,1 @@
-Correção pontual: substitua apenas index.html no GitHub, mantendo app.js, teste-disc.html, logo-microlins.png, config.js e Supabase sem mudanças.
+Atualização DISC: exibe a porcentagem real do perfil predominante no currículo, junto da descrição resumida. Em empate, exibe as tendências empatadas e as porcentagens. Substitua somente app.js no GitHub; preserve config.js e banco de dados.

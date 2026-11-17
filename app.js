@@ -86,7 +86,7 @@ function renderResume(container,raw){
     const section=document.createElement('section');section.className='disc-result-box';
     const title=document.createElement('h3');title.textContent='PERFIL COMPORTAMENTAL — DISC';section.append(title);
     const summary=document.createElement('p');
-    summary.textContent=(winners.length===1?'Tendência predominante: ':'Tendências predominantes (empate): ')+winners.map(k=>labels[k]).join(' e ');
+    summary.textContent=(winners.length===1?'Tendência predominante: ':'Tendências predominantes (empate): ')+winners.map(k=>`${labels[k]} — ${scores[k]}%`).join(' e ');
     section.append(summary);
     const description=document.createElement('p');description.textContent=winners.map(k=>brief[k]).join(' ');section.append(description);
     const note=document.createElement('small');note.textContent='Resultado de autoavaliação educativa, não de avaliação psicológica.';section.append(note);
@@ -121,7 +121,7 @@ function updateDiscStatus(){
    const names={D:'Dominância',I:'Influência',S:'Estabilidade',C:'Conformidade'};
    const max=Math.max(...Object.values(discResult.scores));
    const tops=Object.keys(names).filter(k=>discResult.scores[k]===max).map(k=>names[k]).join(' e ');
-   status.textContent='Teste concluído. Resultado incluído automaticamente: '+tops+'.';
+   status.textContent='Teste concluído. Resultado incluído automaticamente: '+Object.keys(names).filter(k=>discResult.scores[k]===max).map(k=>`${names[k]} (${discResult.scores[k]}%)`).join(' e ')+'.';
  }else{status.textContent='Teste obrigatório pendente. Responda às 24 perguntas para escolher o modelo e concluir o currículo.';}
 }
 
