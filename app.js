@@ -371,7 +371,7 @@ async function loadAdminPayments(){
  if(!isAdmin||owner!==user?.id)return;
  if(config.data){$('adminPixKey').value=config.data.chave_pix||'';$('adminPixName').value=config.data.recebedor||'';}
  const target=$('adminPixRequests');target.replaceChildren();
- if(requests.error){target.textContent='Não foi possível carregar os pedidos: '+requests.error.message;}else if(!requests.data?.length){target.textContent='Nenhum pedido pendente.';}else{
+ if(requests.error){target.textContent='Não foi possível carregar os pedidos: '+requests.error.message;}else if(!requests.data?.length){target.innerHTML='<div class="admin-empty-state"><strong>Nenhum pedido pendente</strong><span>Quando um aluno solicitar conferência de Pix, o pedido aparecerá aqui.</span></div>';}else{
    const ids=[...new Set(requests.data.map(r=>String(r.curriculo_id)))];
    // A consulta administrativa já respeita a política de acesso configurada para currículos.
    const {data:resumes}=await client.from('curriculos').select('id,nome');
@@ -395,7 +395,7 @@ async function loadAdminPayments(){
  }
  const list=$('adminCodeList');list.replaceChildren();
  if(codes.error){list.textContent='Não foi possível carregar códigos: '+codes.error.message;}
- else if(!codes.data?.length){list.textContent='Nenhum código gerado.';}
+ else if(!codes.data?.length){list.innerHTML='<div class="admin-empty-state"><strong>Nenhum código gerado</strong><span>Use o botão “Gerar novo código” acima para criar o primeiro código de liberação.</span></div>';}
  else for(const r of codes.data){const p=document.createElement('p');p.className='admin-pay-row';p.textContent=`${r.codigo} — ${r.usado_em?'USADO':'DISPONÍVEL'} — criado em ${new Date(r.criado_em).toLocaleString('pt-BR')}`;list.append(p);}
 }
 

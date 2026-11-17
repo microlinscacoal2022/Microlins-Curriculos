@@ -1,0 +1,9 @@
+ATUALIZAÇÃO VISUAL DO PAINEL DE PAGAMENTOS — MICROLINS CACOAL
+
+1. Acesse o repositório do GitHub.
+2. Faça upload apenas dos arquivos index.html e app.js desta pasta.
+3. Confirme o commit e aguarde o deploy no Render.
+4. Atualize a página do site com Ctrl+F5.
+
+Não precisa executar SQL. Não altere config.js.
+O funcionamento de pagamentos, geração e resgate de códigos permanece igual.
