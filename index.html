@@ -209,6 +209,27 @@ button.light{background:#eaf1f8;color:#124a79}
 
 .disc-checkbox{display:flex;align-items:center;gap:9px;margin:9px 0;font-size:13px;font-weight:600}.disc-checkbox input{width:auto!important;accent-color:#0e5792}.disc-result-box{margin-top:18px;padding:12px 16px;border-radius:8px;border-left:4px solid var(--accent,#0e5792);background:rgba(128,128,128,.055);color:var(--ink,#223f60)}.disc-result-box h3{margin:0 0 8px;font-size:13px;letter-spacing:.06em;color:var(--accent,#0e5792)}.disc-result-box p{margin:4px 0;font-size:12px;line-height:1.5;color:inherit}.disc-result-box small{display:block;font-size:10px;opacity:.8;margin-top:6px}
 @media print{.disc-result-box{break-inside:avoid}}
+
+/* Correção do cabeçalho no modelo verde: nome sempre acima da faixa. */
+.resume[data-template='verde']::before{display:none!important}
+.resume[data-template='verde'] .resume-head{display:block;position:relative;min-height:0;padding:32px 34px 10px;background:#fff;border:0}
+.resume[data-template='verde'] .resume-identity{padding:0;max-width:none;display:flex;flex-direction:column;align-items:flex-start}
+.resume[data-template='verde'] .resume-identity h2{display:block;color:#253d35!important;font-family:Georgia,serif;font-size:38px;line-height:1.16;margin:0 145px 16px 0;max-width:calc(100% - 145px);overflow-wrap:anywhere;position:relative;z-index:2}
+.resume[data-template='verde'] .resume-topline{display:block;align-self:stretch;box-sizing:content-box;margin:0 -34px 12px;padding:20px 165px 20px 34px;background:#253d35;color:#fff!important;font-size:13px;line-height:1.45;min-height:25px;position:relative;z-index:1}
+.resume[data-template='verde'] .role-pill{margin:0;background:#eef6f1;color:#214536;position:relative;z-index:2}
+.resume[data-template='verde'] .photo-slot{position:absolute;top:24px;right:30px;z-index:3}
+@media(max-width:650px){
+.resume[data-template='verde'] .resume-head{padding:18px 14px 8px}
+.resume[data-template='verde'] .resume-identity h2{font-size:23px;margin-right:95px;max-width:calc(100% - 95px)}
+.resume[data-template='verde'] .resume-topline{margin:0 -14px 9px;padding:12px 105px 12px 14px;font-size:10px}
+.resume[data-template='verde'] .photo-slot{top:14px;right:14px}
+}
+@media print{
+.resume[data-template='verde'] .resume-head{padding:8mm 9mm 2mm!important;min-height:0!important}
+.resume[data-template='verde'] .resume-identity h2{font-size:29px!important;margin-right:40mm!important;max-width:calc(100% - 40mm)!important}
+.resume[data-template='verde'] .resume-topline{margin:0 -9mm 3mm!important;padding:5mm 44mm 5mm 9mm!important;font-size:11px!important}
+.resume[data-template='verde'] .photo-slot{top:7mm;right:8mm}
+}
 </style></head><body>
 <div id="authScreen" class="auth-screen"><div class="auth-card"><div class="auth-brand"><img src="./logo-microlins.png" alt="Logo Microlins"></div><h2>Acesse o Gerador de Currículos</h2><p>Entre na sua conta ou crie seu cadastro para produzir, salvar e consultar seus currículos.</p><div class="auth-lock">🔒 Seus currículos ficam associados à sua conta.</div><div class="field"><label for="authName">Seu nome (para criar conta)</label><input id="authName" type="text" maxlength="80" autocomplete="name" placeholder="Nome que aparecerá no menu"></div><div class="field"><label for="authEmail">E-mail</label><input id="authEmail" type="email" autocomplete="username" placeholder="seuemail@exemplo.com"></div><div class="field"><label for="authPassword">Senha (mínimo 6 caracteres)</label><input id="authPassword" type="password" autocomplete="current-password" minlength="6"></div><div class="actions"><button id="signin" type="button">Entrar</button><button class="yellow" id="signup" type="button">Criar conta</button></div><div class="actions"><button class="light" type="button" id="forgot">Recuperar senha</button></div><p id="authmessage" class="message" role="status" aria-live="polite"></p></div></div>
 <div id="workspace" class="shell" hidden><aside class="side"><div class="logo"><img src="./logo-microlins.png" class="brand-image" alt="Logo Microlins"><span class="brand-label" id="sidebarUsername">Usuário</span></div><nav class="nav"><button id="navCriar" data-page="criar" class="active" type="button">✎ &nbsp; Criar currículo</button><button id="navDisc" data-page="disc" type="button">◉ &nbsp; Teste DISC</button><button id="navModelos" data-page="modelos" type="button">▦ &nbsp; Escolher modelo</button><button id="navVisualizar" data-page="visualizar" type="button">◉ &nbsp; Visualizar currículo</button><button id="navSalvos" data-page="salvos" type="button">▤ &nbsp; Meus currículos</button></nav></aside><div class="main"><header class="top"><h1>Meu Currículo Profissional</h1></header><div class="content"><div class="account"><div><b>Seus currículos na nuvem</b><small id="authstatus">Conectando...</small><button id="editUsername" class="profile-name-btn" type="button">Alterar meu nome</button></div><button type="button" id="logout" class="light">Sair</button></div>
