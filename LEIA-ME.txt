@@ -1,0 +1,10 @@
+ATUALIZACAO DO NOME NO MENU LATERAL
+
+Envie index.html e app.js ao seu repositorio GitHub, substituindo os arquivos atuais. A logo-microlins.png nao precisa ser reenviada. Nao altere config.js nem supabase.sql.
+
+Usuarios novos: preenchem o nome na tela de cadastro; ele aparece na lateral apos fazer login.
+Usuarios ja cadastrados: na area da conta, clique em Alterar meu nome e informe o nome desejado. Ate configurar, o menu usa a parte anterior ao @ do email.
+
+Aguarde o deploy no Render e pressione Ctrl+F5.
+
+ATENCAO: confirmacao de email precisa ser reativada e SMTP configurado antes de abrir o cadastro para todos os alunos.
