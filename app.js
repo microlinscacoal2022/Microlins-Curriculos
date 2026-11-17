@@ -12,6 +12,7 @@ const message = (id, text) => { el(id).textContent = text; };
 const authPanel = el('authpanel');
 el('loginToggle').onclick = () => authPanel.classList.toggle('hide');
 function values() { return Object.fromEntries(fields.map(k => [k, el(k).value])); }
+function resetEditor() { el('form').reset(); selectedId = null; el('savedResumes').value = ''; window.atualizar?.(); }
 function populate(data) { fields.forEach(k => { el(k).value = data?.[k] ?? (k === 'situacao' ? 'primeiro' : ''); }); window.atualizar?.(); document.getElementById('gerar').click(); }
 function updateUI() {
   el('saveCloud').disabled = !user;
@@ -31,8 +32,8 @@ async function refresh() {
   const select = el('savedResumes');
   select.replaceChildren(new Option('Selecione um currículo salvo', ''));
   cache.forEach(x => select.add(new Option(`${x.nome} — ${new Date(x.updated_at).toLocaleDateString('pt-BR')}`, x.id)));
-  if (selectedId && cache.some(x => x.id === selectedId)) select.value = selectedId;
-  else selectedId = null;
+  // Por segurança, nunca selecionar automaticamente um currículo para edição.
+  select.value = ''; 
 }
 function credentials() { return { email:el('authEmail').value.trim(), password:el('authPassword').value }; }
 async function sign(method) {
@@ -61,9 +62,10 @@ el('saveCloud').onclick = async () => {
   const query = selectedId ? db.from('curriculos').update(payload).eq('id', selectedId).eq('usuario_id',user.id).select('id').single() : db.from('curriculos').insert(payload).select('id').single();
   const {data:result,error} = await query;
   if(error) return message('cloudmessage',`Não foi possível salvar: ${error.message}`);
-  selectedId=result.id; message('cloudmessage','Currículo salvo com sucesso na sua conta.'); await refresh();
+  resetEditor(); await refresh(); message('cloudmessage','Currículo salvo com sucesso! O formulário foi limpo. Para consultar, selecione-o em Meus currículos salvos.');
+  el('meus-curriculos').scrollIntoView({behavior:'smooth',block:'start'});
 };
-el('savedResumes').onchange = () => { selectedId = el('savedResumes').value || null; };
+el('savedResumes').onchange = () => { /* Escolher um item não altera o currículo em edição. */ };
 el('loadResume').onclick = () => {
   const item = cache.find(x => x.id === el('savedResumes').value);
   if(!item) return message('cloudmessage','Selecione um currículo.');
@@ -74,10 +76,12 @@ el('deleteResume').onclick = async () => {
   if (!id || !confirm('Excluir este currículo da sua conta?')) return;
   const {error} = await db.from('curriculos').delete().eq('id',id).eq('usuario_id',user.id);
   if(error) return message('cloudmessage',`Não foi possível excluir: ${error.message}`);
-  selectedId=null; await refresh(); message('cloudmessage','Currículo excluído.');
+  if(selectedId===id) resetEditor(); await refresh(); message('cloudmessage','Currículo excluído.');
 };
-el('newResume').onclick = () => { el('form').reset(); selectedId=null; el('savedResumes').value=''; el('gerar').click(); message('cloudmessage','Novo currículo em branco.'); };
+el('newResume').onclick = () => { resetEditor(); message('cloudmessage','Formulário limpo para um novo currículo.'); el('nome').focus(); };
 el('limpar').addEventListener('click', () => { selectedId=null; if (el('savedResumes')) el('savedResumes').value=''; });
+// Evita que o navegador restaure os dados de um aluno ao abrir/recarregar a página.
+resetEditor();
 if(db) {
   db.auth.onAuthStateChange((event,session) => {
     if(event === 'PASSWORD_RECOVERY') setTimeout(async () => {
@@ -88,11 +92,12 @@ if(db) {
       message('authmessage',error ? `Erro ao alterar a senha: ${error.message}` : 'Senha alterada com sucesso.');
     },0);
     user = session?.user ?? null;
+    if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') resetEditor();
     updateUI();
     if(user) setTimeout(() => { refresh().catch(console.error); },0);
     else {cache=[]; el('savedResumes').replaceChildren(new Option('Entre na sua conta para carregar',''));}
   });
   const {data:{session}} = await db.auth.getSession();
   user=session?.user ?? null;
-  updateUI(); if(user) await refresh();
+  resetEditor(); updateUI(); if(user) await refresh();
 } else { updateUI(); message('cloudmessage','Modo demonstração: o gerador funciona e imprime PDF. Para salvar na nuvem, configure o Supabase.'); }
