@@ -17,16 +17,27 @@ function renderResume(container,raw){
   const d=cleanData(raw);container.replaceChildren($('resumeTemplate').content.cloneNode(true));const root=container.querySelector('.resume');
   const set=(key,text)=>{const node=root.querySelector(`[data-r="${key}"]`);if(node)node.textContent=text??'';};
   set('nome',(d.nome||'SEU NOME').toLocaleUpperCase('pt-BR'));
-  set('vaga',d.vaga||'ÁREA DE ATUAÇÃO');set('subtitulo',d.situacao==='experiencia'?'PROFISSIONAL':'CANDIDATO(A) A UMA OPORTUNIDADE');
+  set('vaga',(d.vaga||'CARGO OU VAGA DESEJADA').toLocaleUpperCase('pt-BR'));
+  const topo=[d.cidade,d.idade&&`${d.idade} anos`,d.situacao==='experiencia'?'Com experiência':'Primeiro emprego'].filter(Boolean).join(' • ');
+  set('subtitulo',topo||'Currículo profissional');
   for(const key of ['cidade','telefone','email'])set(key,d[key]||'Não informado');
   set('idade',d.idade?`${d.idade} anos`:'');
-  const formation=[d.formacao,d.periodo&&`Período escolar: ${d.periodo}`,d.instituicao&&`Instituição: ${d.instituicao}`].filter(Boolean).join('\n');
-  set('formacao',formation||'Não informado');set('objetivo',d.objetivo||fallbackObjective(d));
+  const formation=[d.formacao,d.periodo&&`Período: ${d.periodo}`,d.instituicao&&`Instituição: ${d.instituicao}`].filter(Boolean).join('\n');
+  set('formacao',formation||'Não informado');
+  set('objetivo',d.objetivo||fallbackObjective(d));
   set('experiencia',d.experiencia||(d.situacao==='experiencia'?'Não informada.':'Ainda não possuo experiência profissional, mas tenho disposição para aprender e me desenvolver.'));
-  set('cursos',d.cursos||'');set('habilidades',d.habilidades||'');set('perfil',d.perfil||'');set('extras',d.extras||'');
-  for(const key of ['idade','cursos','habilidades','perfil','extras'])root.querySelector(`[data-section="${key}"]`).hidden=!String(d[key]||'').trim();
+  set('cursos',d.cursos||'');
+  set('habilidades',d.habilidades||'');
+  set('perfil',d.perfil||'');
+  set('extras',d.extras||'');
+  for(const key of ['idade','cursos','habilidades','perfil','extras']){
+    const sec=root.querySelector(`[data-section="${key}"]`);
+    if(sec) sec.hidden=!String(d[key]||'').trim();
+  }
   const img=root.querySelector('img.resume-photo'),placeholder=root.querySelector('.photo-placeholder');
-  if(typeof d.foto==='string' && /^data:image\/(jpeg|png|webp);base64,/.test(d.foto)){img.src=d.foto;img.hidden=false;placeholder.hidden=true;}else{img.removeAttribute('src');img.hidden=true;placeholder.hidden=false;}
+  if(typeof d.foto==='string' && /^data:image\/(jpeg|png|webp);base64,/.test(d.foto)){
+    img.src=d.foto;img.hidden=false;placeholder.hidden=true;
+  }else{img.removeAttribute('src');img.hidden=true;placeholder.hidden=false;}
 }
 function resetEditor(){editingId=null;photoData='';$('form').reset();$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';$('editBanner').hidden=true;renderResume($('previewMount'),values());msg('editorMessage','');}
 function populate(data){const d=cleanData(data);for(const k of keys)$(k).value=d[k]??'';photoData=d.foto||'';$('photoStatus').textContent=photoData?'Foto do currículo carregada':'Nenhuma foto selecionada';$('removePhoto').hidden=!photoData;renderResume($('previewMount'),values());}
