@@ -1,9 +1,1 @@
-ATUALIZACAO VISUAL - MEU CURRICULO PROFISSIONAL
-
-Envie os tres arquivos index.html, app.js e logo-microlins.png para a raiz do repositorio GitHub Microlins-Curriculos, substituindo os dois arquivos existentes.
-Nao altere config.js nem supabase.sql.
-Aguarde o deploy automatico no Render e atualize o navegador com Ctrl+F5.
-
-Alteracoes: logo fornecida, cores azul e branco, menu lateral preservado, titulo apenas Meu Curriculo Profissional; removidos Microlins Conecta, texto explicativo do cabecalho e nota inferior do menu.
-
-IMPORTANTE: Antes de liberar cadastros publicamente, reative a confirmacao de email e configure SMTP de envio.
+Atualização do gerador: 6 modelos selecionáveis depois do preenchimento. Envie index.html, app.js e logo-microlins.png ao GitHub, sem alterar config.js e supabase.sql. A publicação do Render deve terminar antes do teste. Modelos são recriações editáveis inspiradas nas referências, não os PDFs como fundos.
