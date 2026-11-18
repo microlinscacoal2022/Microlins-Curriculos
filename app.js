@@ -214,8 +214,28 @@ $('navDisc').onclick=()=>navigate('disc');$('goDisc').onclick=()=>navigate('disc
 for(const k of keys)$(k).addEventListener('input',()=>renderResume($('previewMount'),values()));
 $('foto').onchange=async()=>{const file=$('foto').files?.[0];if(!file)return;if(!['image/jpeg','image/png','image/webp'].includes(file.type))return msg('editorMessage','Escolha uma foto JPG, PNG ou WEBP.');if(file.size>12*1024*1024)return msg('editorMessage','A foto deve ter até 12 MB.');const read=()=>new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file);});try{const src=await read();const im=new Image();im.src=src;await im.decode();const side=460,ratio=Math.min(1,side/Math.max(im.width,im.height));const canvas=document.createElement('canvas');canvas.width=Math.round(im.width*ratio);canvas.height=Math.round(im.height*ratio);canvas.getContext('2d').drawImage(im,0,0,canvas.width,canvas.height);photoData=canvas.toDataURL('image/jpeg',.76);$('photoStatus').textContent='Foto adicionada';$('removePhoto').hidden=false;msg('editorMessage','Foto pronta para salvar.');renderResume($('previewMount'),values());}catch(e){msg('editorMessage','Não foi possível abrir a foto. Tente outra imagem.');}};
 $('removePhoto').onclick=()=>{photoData='';$('foto').value='';$('removePhoto').hidden=true;$('photoStatus').textContent='Nenhuma foto selecionada';renderResume($('previewMount'),values());};
-async function saveCloudResume(){if(!user)return;const d=values();if(!d.nome)return msg('editorMessage','Preencha o nome completo antes de salvar.');if(!requireDisc())return;const payload={nome:d.nome,conteudo:d,usuario_id:user.id};$('saveCloud').disabled=true;try{const q=editingId?client.from('curriculos').update(payload).eq('id',editingId).eq('usuario_id',user.id):client.from('curriculos').insert(payload);const {error}=await q;if(error)throw error;resetEditor();await refresh();navigate('salvos');msg('cloudmessage','Currículo salvo com sucesso! O formulário de criação já está em branco.');}catch(error){msg('editorMessage','Não foi possível salvar: '+error.message);}finally{$('saveCloud').disabled=false;}}
-$('saveCloud').onclick=saveCloudResume; $('saveChosen').onclick=saveCloudResume;
+let resumeSaving=false;
+async function saveCloudResume(openPayment=false){
+ if(!user||resumeSaving)return;
+ const d=values(), messageId=openPayment?'chosenMessage':'editorMessage';
+ if(!d.nome){msg(messageId,'Preencha o nome completo antes de salvar.');if(openPayment)navigate('criar');return;}
+ if(!requireDisc(messageId))return;
+ const owner=user.id, payload={nome:d.nome,conteudo:d,usuario_id:owner};
+ resumeSaving=true;
+ const buttons=['saveCloud','saveChosen','printChosen'];buttons.forEach(id=>$(id).disabled=true);
+ msg(messageId,'Salvando currículo...');
+ try{
+  const q=editingId?client.from('curriculos').update(payload).eq('id',editingId).eq('usuario_id',owner):client.from('curriculos').insert(payload);
+  const {data,error}=await q.select('id,nome,conteudo,updated_at').single();
+  if(error)throw error;if(user?.id!==owner)return;
+  rows=[data,...rows.filter(r=>String(r.id)!==String(data.id))];renderList();
+  resetEditor();showSaved(data.id);msg('chosenMessage','');msg('cloudmessage','Currículo salvo com sucesso!');
+  if(openPayment)await gateExport(data.id);
+  await refresh();
+ }catch(error){msg(messageId,'Não foi possível salvar ou abrir a liberação: '+error.message);alert('Não foi possível concluir: '+error.message);}
+ finally{resumeSaving=false;buttons.forEach(id=>$(id).disabled=false);}
+}
+$('saveCloud').onclick=()=>saveCloudResume(false); $('saveChosen').onclick=()=>saveCloudResume(false);
 $('closeSaved').onclick=()=>{$('savedViewer').hidden=true;viewingId=null;};$('printSaved').onclick=()=>gateExport(viewingId);$('pdf').onclick=()=>{if(!$('nome').value.trim())return msg('editorMessage','Preencha o nome antes de gerar o PDF.');if(!requireDisc())return;renderResume($('previewMount'),values());msg('editorMessage','Salve o currículo para liberar o PDF por Pix ou código.');};$('editSaved').onclick=()=>editSaved(viewingId);
 function printResume(id){ // Mantém somente o documento selecionado na área de impressão.
  document.querySelectorAll('.page').forEach(p=>p.classList.remove('print-target'));
@@ -233,7 +253,7 @@ $('previewChosen').onclick=()=>{if(!requireDisc())return;renderChosen();navigate
 $('returnToForm').onclick=()=>navigate('criar');
 $('changeModel').onclick=()=>{buildGallery();navigate('modelos');};
 $('backToForm').onclick=()=>navigate('criar');
-$('printChosen').onclick=()=>{if(!requireDisc())return;msg('chosenMessage','Para liberar o PDF, salve o currículo na nuvem e abra-o em Meus currículos.');};
+$('printChosen').onclick=()=>saveCloudResume(true);
 
 // A segurança efetiva é garantida pelas políticas RLS no Supabase.
 // A interface nunca recebe ou usa a chave service_role.
@@ -308,7 +328,7 @@ async function gateExport(id){
  paymentResumeId=String(id);
  $('paymentResumeName').textContent='Currículo: '+(row.nome||'Sem nome');
  $('redemptionCode').value='';payMsg('Selecione uma forma de liberação.');
- await getPixConfig();navigate('pagamento');
+ $('pixPayer').value='';paymentPixKey='';$('copyPix').disabled=true;$('requestPix').disabled=true;$('pixInstructions').textContent='Carregando chave Pix...';navigate('pagamento');await getPixConfig();
  const {data:requests}=await client.from('curriculos_pix_pedidos').select('status,solicitado_em').eq('curriculo_id',paymentResumeId).eq('usuario_id',user.id).order('solicitado_em',{ascending:false}).limit(1);
  if(requests?.[0]?.status==='pendente')payMsg('Seu Pix está aguardando conferência do administrador. Se já foi aprovado, clique em Verificar liberação.');
 }

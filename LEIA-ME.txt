@@ -1,1 +1,1 @@
-Substitua somente app.js no GitHub. Aguarde a publicação e pressione Ctrl+F5. Não altere o Supabase.
+Substitua app.js no GitHub. A função Liberar PDF salva o currículo e abre as opções de Pix e código. Não altere o Supabase.
