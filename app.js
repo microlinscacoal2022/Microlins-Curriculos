@@ -6,12 +6,15 @@ const client=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 // Estilos do quadro DISC para os seis modelos, sem alterar seus temas de cores.
 const discCss=document.createElement('style');
 discCss.textContent=`
-.disc-all-scores{display:grid;gap:9px;margin:12px 0 13px}
-.disc-score-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;font-weight:600;margin-bottom:4px}
-.disc-score-heading strong{font-variant-numeric:tabular-nums;font-size:12px}
-.disc-score-track{height:6px;background:rgba(128,128,128,.20);border-radius:30px;overflow:hidden}
-.disc-score-fill{height:100%;background:var(--accent,#0e5792);border-radius:30px}
-@media print{.disc-score-line{break-inside:avoid}.disc-score-track,.disc-score-fill{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
+.resume .disc-result-box{margin:12px 0 0;padding:0;background:transparent;border:0;border-radius:0;color:var(--ink,#223f60);break-inside:avoid}
+.resume .disc-result-box h3{margin:0 0 5px;padding:0;border:0;font-size:12px;letter-spacing:.04em;color:var(--accent,#0e5792)}
+.resume .disc-all-scores{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px 0;margin:0 0 5px;font-size:11px;line-height:1.5}
+.resume .disc-score-line{display:inline-flex;gap:4px;align-items:baseline;white-space:nowrap;padding:0;border:0;font-size:inherit;line-height:inherit}
+.resume .disc-score-line:not(:last-child)::after{content:' | ';white-space:pre;margin:0 5px;color:inherit;opacity:.65}
+.resume .disc-score-line strong{font-size:inherit;font-variant-numeric:tabular-nums;color:inherit}
+.resume .disc-result-box p{margin:0;font-size:11px;line-height:1.5;color:inherit}
+.resume .disc-result-box small{font-size:9px;line-height:1.35;display:block;margin-top:3px;opacity:.85}
+@media print{.resume .disc-result-box{break-inside:avoid}}
 `;
 document.head.append(discCss);
 
@@ -122,20 +125,15 @@ function renderResume(container,raw){
     const results=document.createElement('div');results.className='disc-all-scores';
     for(const key of ['D','I','S','C']){
       const line=document.createElement('div');line.className='disc-score-line';
-      const heading=document.createElement('div');heading.className='disc-score-heading';
-      const name=document.createElement('span');name.textContent=`${key} — ${labels[key]}`;
+      const name=document.createElement('span');name.textContent=`${labels[key]}`;
       const percent=document.createElement('strong');percent.textContent=`${Math.round(scores[key])}%`;
-      heading.append(name,percent);
-      const track=document.createElement('div');track.className='disc-score-track';
-      const fill=document.createElement('div');fill.className='disc-score-fill';fill.style.width=`${scores[key]}%`;
-      track.append(fill);line.append(heading,track);results.append(line);
+      line.append(name,percent);results.append(line);
     }
     section.append(results);
     const summary=document.createElement('p');
-    summary.textContent=(winners.length===1?'Tendência predominante: ':'Tendências predominantes (empate): ')+winners.map(k=>labels[k]).join(' e ');
+    const emphasis=document.createElement('strong');emphasis.textContent=(winners.length===1?'Perfil predominante: ':'Perfis predominantes: ')+winners.map(k=>labels[k]).join(' e ');summary.append(emphasis,document.createTextNode(' — '+winners.map(k=>brief[k]).join(' ')));
     section.append(summary);
-    const description=document.createElement('p');description.textContent=winners.map(k=>brief[k]).join(' ');section.append(description);
-    const note=document.createElement('small');note.textContent='Percentuais independentes por dimensão; não precisam somar 100%. Autoavaliação educativa, não avaliação psicológica.';section.append(note);
+    const note=document.createElement('small');note.textContent='Autoavaliação educativa • Percentuais independentes por dimensão.';section.append(note);
     const body=root.querySelector('.resume-body');body.append(section);
   }
 }
