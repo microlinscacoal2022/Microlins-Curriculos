@@ -1,0 +1,76 @@
+MICROLINS CACOAL — COBRANÇA PIX AUTOMÁTICA ASAAS | R$ 10 por currículo
+
+ESTADO ATUAL
+Este ZIP contém o código preparado. Ele NÃO está instalado na sua conta Asaas,
+Supabase ou Render. Sem credenciais, deploy e testes, o pagamento automático NÃO funcionará.
+
+O que muda no site:
+- 'Meus currículos' -> 'Baixar PDF / Liberar' abre código OU pagamento automático Asaas.
+- CPF do pagador, QR Code dinâmico e Pix Copia e Cola exclusivos por cobrança.
+- O status é consultado pelo servidor; pagamento RECEIVED libera currículo.
+- O código único existente continua funcionando.
+- Admin: consulta pagamentos Asaas recentes; Pix manual anterior fica identificado como 'legado'.
+- Não há cobrança recorrente; é um Pix avulso de R$ 10 por currículo.
+
+INSTALAÇÃO
+1. Faça BACKUP do Supabase, especialmente tabelas e políticas RLS.
+2. Confirme que o SQL anterior de códigos e pagamentos já está instalado.
+3. Supabase -> SQL Editor -> execute INSTALAR_ASAAS_AUTOMATICO.sql.
+4. Crie sua conta ASAAS, conclua os requisitos de cadastro/verificação,
+   e ative a integração de API em Sandbox para TESTES.
+5. Defina SEGREDOS no Supabase -> Edge Functions -> Secrets:
+     ASAAS_API_KEY         chave API obtida no painel Asaas (não no GitHub)
+     ASAAS_ENV             sandbox  [mude para production depois de homologar]
+     ASAAS_WEBHOOK_TOKEN   senha aleatória longa, exclusiva do webhook
+     SITE_ORIGIN           https://microlins-curriculos.onrender.com
+   SUPABASE_URL, SUPABASE_ANON_KEY e SUPABASE_SERVICE_ROLE_KEY são
+   fornecidas pelo Supabase em ambiente de Edge Functions: confira se existem.
+   NUNCA compartilhe ASAAS_API_KEY ou SERVICE_ROLE_KEY em chats, código público
+   ou config.js.
+6. Instale o Supabase CLI em seu computador ou use o painel de Edge Functions.
+   A pasta 'supabase/functions' contém 3 funções + '_shared':
+     asaas-create-pix / asaas-status / asaas-webhook
+   Exemplo de comandos, a partir da pasta descompactada:
+     supabase login
+     supabase link --project-ref ykjqotoagxjkivfopmqf
+     supabase functions deploy asaas-create-pix --no-verify-jwt
+     supabase functions deploy asaas-status --no-verify-jwt
+     supabase functions deploy asaas-webhook --no-verify-jwt
+   IMPORTANTE: as funções SEM JWT da plataforma verificam o JWT do usuário
+   manualmente (asaas-create-pix e asaas-status), e o webhook valida
+   o header secreto (asaas-webhook).
+7. No painel ASAAS Sandbox, configure Webhook de COBRANÇAS:
+     URL https://ykjqotoagxjkivfopmqf.supabase.co/functions/v1/asaas-webhook
+     authToken = mesmo valor exato de ASAAS_WEBHOOK_TOKEN
+     Eventos: PAYMENT_RECEIVED e PAYMENT_REFUNDED, entre outros relevantes.
+   No webhook só PAYMENT_RECEIVED / status RECEIVED efetivamente libera.
+   Não use API KEY como authToken.
+8. GitHub -> repositório Microlins-Curriculos:
+   substitua INDEX.HTML e APP.JS somente, e mantenha config.js no lugar.
+   Render publica alterações automaticamente, conforme configuração existente.
+9. Teste end-to-end em Sandbox:
+   - criar currículo do usuário A, gerar Pix e visualizar QR Code
+   - simular pagamento recebido no Asaas sandbox e verificar liberação
+   - usuário B não deve conseguir liberar o currículo de A
+   - usuário A deve conseguir gerar/baixar o PDF após liberação
+   - código de uso único segue consumindo apenas uma vez
+10. Configure uma API Key DE PRODUÇÃO do Asaas no Supabase, mude ASAAS_ENV
+    para 'production', configure NOVO webhook em produção e faça um pagamento
+    real de R$ 10 para validar o fluxo. Confira tarifas do seu plano.
+
+ATENÇÃO À PROTEÇÃO DE PDF
+O currículo é montado como HTML no navegador. Bloquear captura de tela
+completamente é impossível em site comum. Para restringir acesso real ao
+arquivo final, a geração de PDF também deve migrar para um backend privado.
+
+PRIVACIDADE
+O CPF vai diretamente a uma Edge Function segura para o Asaas; não é salvo
+na tabela nova de pagamentos nem exibido na interface do administrador.
+Em caso de utilização por menores, confira as bases legais e informações
+necessárias para tratamento de dados pessoais.
+
+SUPORTE/ERRO
+- Sem tabela no SQL Editor: instale SQL antes de publicar o novo site.
+- Erro 401 no webhook: conferir ASAAS_WEBHOOK_TOKEN / authToken.
+- Função 500: inspecionar logs das Edge Functions e autorização da API Key.
+- Se a API não retornar RECEIVED, não libere o PDF manualmente sem verificar pagamento.

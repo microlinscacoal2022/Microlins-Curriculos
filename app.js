@@ -322,13 +322,35 @@ async function deleteAdminResume(r){
 // Liberação por código (consumo atômico no banco) ou Pix com aprovação manual.
 const payMsg=s=>msg('paymentMessage',s);
 const escapeText=v=>String(v??'');
-async function getPixConfig(){
- const {data,error}=await client.from('curriculos_pix_config').select('chave_pix,recebedor,valor_centavos').eq('id',1).maybeSingle();
- if(error){$('pixInstructions').textContent='Configure o SQL de pagamento no Supabase.';return;}
- paymentPixKey=data?.chave_pix||'';
- $('pixInstructions').textContent=paymentPixKey?`Valor: R$ 10,00 · Recebedor: ${data.recebedor} · Chave Pix: ${paymentPixKey}`:'A chave Pix ainda não foi cadastrada pelo administrador.';
- $('copyPix').disabled=!paymentPixKey;$('requestPix').disabled=!paymentPixKey;
+// Pix dinâmico Asaas; a API Key permanece SOMENTE nas Edge Functions.
+let asaasPaymentId=null, asaasPoll=null;
+const stopAsaasPoll=()=>{if(asaasPoll){clearInterval(asaasPoll);asaasPoll=null;}};
+async function asaasStatus(){
+ if(!paymentResumeId||!user)return;
+ const {data,error}=await client.functions.invoke('asaas-status',{body:{curriculoId:paymentResumeId}});
+ if(error){payMsg('Não foi possível verificar o Pix agora. Tente novamente.');return;}
+ if(data?.liberado){stopAsaasPoll();$('asaasPaymentStatus').textContent='Pagamento confirmado. Currículo liberado!';payMsg('Pagamento confirmado! Abra seu currículo em Meus currículos para baixar o PDF.');}
+ else if(data?.pagamento?.status){$('asaasPaymentStatus').textContent='Status: '+(data.pagamento.status==='PENDING'?'aguardando pagamento':data.pagamento.status);}
 }
+$('asaasCreate').onclick=async()=>{
+ if(!paymentResumeId)return payMsg('Selecione primeiro um currículo salvo.');
+ const cpf=$('asaasCpf').value.replace(/\D/g,'');
+ if(cpf.length!==11)return payMsg('Informe um CPF válido com 11 dígitos.');
+ $('asaasCreate').disabled=true;payMsg('Gerando cobrança Pix...');
+ try{
+  const {data,error}=await client.functions.invoke('asaas-create-pix',{body:{curriculoId:paymentResumeId,cpf}});
+  if(error||!data?.pixPayload)throw new Error(data?.error||'Não foi possível gerar o Pix; verifique a configuração do Asaas.');
+  asaasPaymentId=data.paymentId;
+  $('asaasPayload').value=data.pixPayload;
+  $('asaasQr').src='data:image/png;base64,'+data.qrImage;
+  $('asaasDetails').hidden=false;
+  $('asaasPaymentStatus').textContent='Aguardando confirmação do Asaas...';
+  payMsg('Pix gerado. Pague no aplicativo do seu banco.');
+  stopAsaasPoll();asaasPoll=setInterval(()=>{if(!document.hidden&&paymentResumeId)void asaasStatus();},6000);
+ }catch(e){payMsg(e.message||'Erro na geração do Pix.');}
+ finally{$('asaasCreate').disabled=false;}
+};
+$('asaasCopy').onclick=async()=>{try{await navigator.clipboard.writeText($('asaasPayload').value);payMsg('Pix Copia e Cola copiado.');}catch{payMsg('Selecione e copie o código exibido.');}};
 async function gateExport(id){
  if(!user||!id)return alert('Primeiro salve e abra um currículo da sua conta.');
  const row=rows.find(r=>String(r.id)===String(id));
@@ -340,9 +362,9 @@ async function gateExport(id){
  paymentResumeId=String(id);
  $('paymentResumeName').textContent='Currículo: '+(row.nome||'Sem nome');
  $('redemptionCode').value='';payMsg('Selecione uma forma de liberação.');
- $('pixPayer').value='';paymentPixKey='';$('copyPix').disabled=true;$('requestPix').disabled=true;$('pixInstructions').textContent='Carregando chave Pix...';navigate('pagamento');await getPixConfig();
- const {data:requests}=await client.from('curriculos_pix_pedidos').select('status,solicitado_em').eq('curriculo_id',paymentResumeId).eq('usuario_id',user.id).order('solicitado_em',{ascending:false}).limit(1);
- if(requests?.[0]?.status==='pendente')payMsg('Seu Pix está aguardando conferência do administrador. Se já foi aprovado, clique em Verificar liberação.');
+ $('asaasDetails').hidden=true;$('asaasPayload').value='';$('asaasCpf').value='';stopAsaasPoll();navigate('pagamento');
+ const {data:previous}=await client.from('curriculos_asaas_pagamentos').select('status').eq('curriculo_id',paymentResumeId).eq('usuario_id',user.id).order('criado_em',{ascending:false}).limit(1);
+ if(previous?.[0]?.status==='PENDING')payMsg('Há um Pix pendente. Você pode gerar um novo QR Code, se necessário.');
 }
 $('redeemCode').onclick=async()=>{
  if(!paymentResumeId)return;
@@ -353,24 +375,14 @@ $('redeemCode').onclick=async()=>{
  if(error)return payMsg('Não foi possível usar o código: '+error.message);
  payMsg('Código aceito! Seu currículo está liberado permanentemente para esta conta. Abra-o em Meus currículos para salvar em PDF.');
 };
-$('copyPix').onclick=async()=>{if(!paymentPixKey)return;try{await navigator.clipboard.writeText(paymentPixKey);payMsg('Chave Pix copiada.');}catch(e){payMsg('Copie a chave informada acima.');}};
-$('requestPix').onclick=async()=>{
- if(!paymentResumeId||!paymentPixKey)return;
- if($('pixPayer').value.trim().length<3)return payMsg('Informe o nome de quem realizou o Pix.');
- if(!confirm('Você já realizou o Pix de R$ 10,00? A liberação ocorrerá apenas após a conferência no extrato pelo administrador.'))return;
- $('requestPix').disabled=true;
- const {error}=await client.rpc('pedir_liberacao_pix',{p_curriculo:paymentResumeId,p_pagador_nome:$('pixPayer').value.trim()});
- $('requestPix').disabled=false;
- payMsg(error?'Não foi possível enviar solicitação: '+error.message:'Solicitação enviada. Aguarde a conferência do pagamento pelo administrador.');
-};
-$('paymentCheck').onclick=async()=>{
+$('paymentCheck').onclick=async()=>{await asaasStatus();
  if(!paymentResumeId)return;
  const {data,error}=await client.rpc('pode_exportar_curriculo',{p_curriculo:paymentResumeId});
  if(error)return payMsg('Erro: '+error.message);
  if(data===true){payMsg('Currículo liberado!');showSaved(rows.find(r=>String(r.id)===paymentResumeId)?.id);}
  else payMsg('Ainda não há autorização de download. Se enviou Pix, aguarde a conferência.');
 };
-$('paymentBack').onclick=()=>navigate('salvos');
+$('paymentBack').onclick=()=>{stopAsaasPoll();navigate('salvos');};
 $('adminGenerateCode').onclick=async()=>{
  if(!isAdmin)return;
  $('adminGenerateCode').disabled=true;
@@ -422,6 +434,14 @@ async function loadAdminPayments(){
     }
     box.append(summary,buttons);target.append(box);
    }
+ }
+ const asaasList=$('adminAsaasList');
+ if(asaasList){
+  const {data:payments,error:err}=await client.from('curriculos_asaas_pagamentos').select('curriculo_id,valor_centavos,status,criado_em,confirmado_em').order('criado_em',{ascending:false}).limit(30);
+  asaasList.replaceChildren();
+  if(err){asaasList.textContent='Integração Asaas ainda não instalada no Supabase.';}
+  else if(!payments?.length){asaasList.textContent='Nenhum pagamento automático registrado.';}
+  else for(const p of payments){const line=document.createElement('p');line.className='admin-pay-row';line.textContent=`Currículo ${p.curriculo_id} · R$ ${(p.valor_centavos/100).toFixed(2).replace('.',',')} · ${p.status} · ${new Date(p.criado_em).toLocaleString('pt-BR')}`;asaasList.append(line);}
  }
  const list=$('adminCodeList');list.replaceChildren();
  if(codes.error){list.textContent='Não foi possível carregar códigos: '+codes.error.message;}
