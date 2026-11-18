@@ -1,1 +1,1 @@
-Substitua somente index.html no GitHub. O botão de liberação foi ocultado na etapa Visualizar currículo; permanece em Meus currículos. Não altere app.js, config.js ou Supabase.
+Substitua index.html e app.js no GitHub. Não altere config.js ou Supabase. Prévia com marca-d’água; impressão autorizada pelo fluxo existente. Capturas do sistema operacional não podem ser bloqueadas de forma confiável.
