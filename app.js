@@ -186,7 +186,37 @@ async function checkPreviewAccess(id){
 function showSaved(id){const row=rows.find(r=>r.id===id);if(!row)return;viewingId=id;renderResume($('savedMount'),row.conteudo||{});$('savedViewerTitle').textContent=row.nome||'Currículo salvo';$('savedViewer').hidden=false;navigate('salvos');$('savedViewer').scrollIntoView({behavior:'smooth',block:'start'});void checkPreviewAccess(id);}
 function editSaved(id){const row=rows.find(r=>r.id===id);if(!row)return;resetEditor();editingId=id;populate(row.conteudo||{});$('editBanner').hidden=false;navigate('criar');}
 async function deleteSaved(id){if(!confirm('Excluir este currículo da sua conta? Esta ação não pode ser desfeita.'))return;const {error}=await client.from('curriculos').delete().eq('id',id).eq('usuario_id',user.id);if(error)return msg('cloudmessage','Erro ao excluir: '+error.message);if(viewingId===id){viewingId=null;$('savedViewer').hidden=true;}if(editingId===id)resetEditor();await refresh();msg('cloudmessage','Currículo excluído.');}
-async function submitAuth(method){const email=$('authEmail').value.trim(),password=$('authPassword').value;if(!email||!password)return msg('authmessage','Preencha e-mail e senha.');if(password.length<6)return msg('authmessage','A senha precisa ter pelo menos 6 caracteres.');const btn=$(method==='signUp'?'signup':'signin');btn.disabled=true;try{const name=$('authName').value.trim();if(method==='signUp' && !name)return msg('authmessage','Informe seu nome para criar a conta.');const {data,error}=method==='signUp'?await client.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:location.origin}}):await client.auth.signInWithPassword({email,password});if(error)throw error;if(method==='signUp' && !data.session)msg('authmessage','Cadastro solicitado. Confirme seu e-mail antes de entrar.');else msg('authmessage','Acesso realizado.');}catch(error){msg('authmessage',error.message||'Falha de autenticação.');}finally{btn.disabled=false;}}
+async function submitAuth(method){
+ const name=$('authName').value.trim(), email=$('authEmail').value.trim(), password=$('authPassword').value;
+ if(!name||!email||!password)return msg('authmessage','Preencha os três campos: nome, e-mail e senha.');
+ if(password.length<6)return msg('authmessage','A senha precisa ter pelo menos 6 caracteres.');
+ const btn=$(method==='signUp'?'signup':'signin');
+ btn.disabled=true;
+ try{
+  if(method==='signUp'){
+   const {data,error}=await client.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:location.origin}});
+   if(error)throw error;
+   msg('authmessage',!data.session?'Cadastro solicitado. Confirme seu e-mail antes de entrar.':'Conta criada com sucesso.');
+  }else{
+   const {data,error}=await client.auth.signInWithPassword({email,password});
+   if(error)throw error;
+   const savedName=String(data.user?.user_metadata?.full_name||data.user?.user_metadata?.name||'').trim();
+   const normalizeName=v=>v.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+   if(savedName && normalizeName(savedName)!==normalizeName(name)){
+    await client.auth.signOut();
+    msg('authmessage','O nome informado não corresponde ao cadastro desta conta. Confira o nome cadastrado.');
+    return;
+   }
+   // Contas antigas sem nome cadastrado são atualizadas no primeiro acesso válido.
+   if(!savedName){
+    const {error:updateError}=await client.auth.updateUser({data:{full_name:name}});
+    if(updateError)throw updateError;
+   }
+   msg('authmessage','Acesso realizado.');
+  }
+ }catch(error){msg('authmessage',error.message||'Falha de autenticação.');}
+ finally{btn.disabled=false;}
+}
 function updateDiscStatus(){
  const status=$('discStatus');if(!status)return;
  if(isValidDisc(accountDisc)){

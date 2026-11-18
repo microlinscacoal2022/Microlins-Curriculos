@@ -1,1 +1,13 @@
-Substitua index.html e app.js no GitHub. Não altere config.js ou Supabase. Prévia com marca-d’água; impressão autorizada pelo fluxo existente. Capturas do sistema operacional não podem ser bloqueadas de forma confiável.
+ATUALIZAÇÃO DE LOGIN — MICROLINS CACOAL
+
+1. Extraia os arquivos.
+2. Substitua apenas index.html e app.js no GitHub do site.
+3. NÃO substitua config.js e NÃO altere tabelas do Supabase.
+4. Aguarde a publicação do Render e atualize com Ctrl+F5.
+
+Nome, e-mail e senha passam a ser exigidos tanto para cadastro quanto para login.
+Para contas existentes com nome gravado, o nome digitado precisa corresponder.
+Para contas antigas sem nome no perfil, o nome será cadastrado no primeiro login validado pelo e-mail e senha.
+O nome NÃO é uma proteção de autenticação adicional; a segurança continua baseada nas credenciais do Supabase.
+
+Teste primeiro em uma conta não administrativa.
